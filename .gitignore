@@ -299,3 +299,6 @@ migrations/versions/*.py
 *.db-journal
 *.db-wal
 *.db-shm
+
+PROJECT_IMPLEMENTATION_REPORT.md
+PROJECT_SUMMARY_REPORT.md

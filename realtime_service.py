@@ -18,8 +18,25 @@ def require_socket_auth(f):
     """Decorator for socket authentication"""
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Try to get token from different sources
+        token = None
+        
+        # 1. Check query parameters
         token = request.args.get('token')
+        
+        # 2. Check auth data if available
+        if not token and hasattr(request, 'auth') and request.auth:
+            token = request.auth.get('token')
+            
+        # 3. Check if token is passed in the event data
+        if not token and args and len(args) > 0 and isinstance(args[0], dict):
+            token = args[0].get('token')
+        
         if not token:
+            print(f"No token found in socket request for {f.__name__}")
+            print(f"Request args: {dict(request.args)}")
+            print(f"Request auth: {getattr(request, 'auth', None)}")
+            print(f"Event args: {args}")
             emit('error', {'message': 'Authentication required'})
             return
         
@@ -33,9 +50,14 @@ def require_socket_auth(f):
             kwargs['current_user'] = current_user
             return f(*args, **kwargs)
         except jwt.ExpiredSignatureError:
+            print(f"Token expired for socket request to {f.__name__}")
             emit('error', {'message': 'Token expired'})
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            print(f"Invalid token for socket request to {f.__name__}: {str(e)}")
             emit('error', {'message': 'Invalid token'})
+        except Exception as e:
+            print(f"Authentication error in {f.__name__}: {str(e)}")
+            emit('error', {'message': 'Authentication failed'})
     
     return decorated
 
@@ -54,27 +76,45 @@ def handle_disconnect():
 
 @socketio.on('join_user_room')
 @require_socket_auth
-def handle_join_user_room(data, current_user):
+def handle_join_user_room(data=None, **kwargs):
     """Join user-specific room for real-time updates"""
-    room = f"user_{current_user.id}"
-    join_room(room)
-    active_connections[request.sid] = {
-        'user_id': current_user.id,
-        'room': room,
-        'connected_at': datetime.utcnow()
-    }
-    
-    # Send initial dashboard data
-    dashboard_data = get_dashboard_data(current_user.id)
-    emit('dashboard_update', dashboard_data)
-    emit('joined_room', {'room': room, 'message': 'Successfully joined real-time updates'})
+    try:
+        current_user = kwargs.get('current_user')
+        if not current_user:
+            emit('error', {'message': 'Authentication failed'})
+            return
+            
+        room = f"user_{current_user.id}"
+        join_room(room)
+        active_connections[request.sid] = {
+            'user_id': current_user.id,
+            'room': room,
+            'connected_at': datetime.utcnow()
+        }
+        
+        # Send initial dashboard data
+        dashboard_data = get_dashboard_data(current_user.id)
+        emit('dashboard_update', dashboard_data)
+        emit('joined_room', {'room': room, 'message': 'Successfully joined real-time updates'})
+    except Exception as e:
+        print(f"Error in handle_join_user_room: {str(e)}")
+        emit('error', {'message': 'Failed to join user room'})
 
 @socketio.on('request_dashboard_update')
 @require_socket_auth
-def handle_dashboard_update_request(data, current_user):
+def handle_dashboard_update_request(data=None, **kwargs):
     """Handle manual dashboard update request"""
-    dashboard_data = get_dashboard_data(current_user.id)
-    emit('dashboard_update', dashboard_data)
+    try:
+        current_user = kwargs.get('current_user')
+        if not current_user:
+            emit('error', {'message': 'Authentication failed'})
+            return
+            
+        dashboard_data = get_dashboard_data(current_user.id)
+        emit('dashboard_update', dashboard_data)
+    except Exception as e:
+        print(f"Error in handle_dashboard_update_request: {str(e)}")
+        emit('error', {'message': 'Failed to update dashboard'})
 
 def get_dashboard_data(user_id):
     """Get comprehensive dashboard data for a user"""
