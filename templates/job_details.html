@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Job Details - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-briefcase me-2"></i>Job Details</h2>
+        <a href="/jobs" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Jobs
+        </a>
+    </div>
+
+    <!-- Job Details Container -->
+    <div class="card mb-4" id="jobDetails">
+        <div class="card-body text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading job details...</p>
+        </div>
+    </div>
+
+    <!-- Application Form for Candidates (shown/hidden via JS) -->
+    <div class="card mb-4 d-none" id="applicationSection">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-paper-plane me-2"></i>Apply for this Position</h5>
+        </div>
+        <div class="card-body">
+            <form id="applicationForm">
+                <div class="mb-3">
+                    <label for="resumeSelect" class="form-label">Select your resume</label>
+                    <select class="form-select" id="resumeSelect" required>
+                        <option value="">Choose a resume...</option>
+                    </select>
+                    <div class="form-text">
+                        No resume available? <a href="/resumes">Upload a new resume</a>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="coverLetter" class="form-label">Cover Letter (optional)</label>
+                    <textarea class="form-control" id="coverLetter" rows="4" placeholder="Tell the employer why you're a good fit for this position..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="applyButton">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Application
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Success (Hidden initially) -->
+    <div class="alert alert-success d-none" id="applicationSuccess" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        <span>Your application has been submitted successfully!</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Variables
+    let currentJobId = parseInt("{{ job_id }}");
+    let currentJob = null;
+    let userResumes = [];
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchJobDetails();
+        if (isAuthenticated()) {
+            fetchUserInfo().then(user => {
+                if (user && user.role === 'candidate') {
+                    fetchUserResumes();
+                }
+            });
+        }
+
+        // Set up application form submission
+        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitApplication();
+        });
+    });
+
+    // Fetch job details from API
+    async function fetchJobDetails() {
+        try {
+            const response = await fetch(`/api/jobs/${currentJobId}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load job details');
+            }
+            
+            const data = await response.json();
+            currentJob = data;
+            displayJobDetails(data);
+            
+            // Check if user can apply
+            const userInfo = await fetchUserInfo();
+            if (userInfo && userInfo.role === 'candidate') {
+                const applicationSection = document.getElementById('applicationSection');
+                
+                // Don't show application form if already applied
+                if (data.has_applied) {
+                    showApplicationSuccess('You have already applied for this position.');
+                } else {
+                    applicationSection.classList.remove('d-none');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading job details:', error);
+            showToast('Error loading job details. Please try again.', 'danger');
+            document.getElementById('jobDetails').innerHTML = `
+                <div class="card-body text-center p-5">
+                    <i class="fas fa-exclamation-triangle text-danger fa-3x mb-3"></i>
+                    <h4>Failed to load job details</h4>
+                    <p class="text-muted">There was a problem loading this job. It may have been removed or you don't have permission to view it.</p>
+                    <a href="/jobs" class="btn btn-primary mt-3">Browse Other Jobs</a>
+                </div>
+            `;
+        }
+    }
+
+    // Display job details in the UI
+    function displayJobDetails(job) {
+        const jobTypeClass = getJobTypeBadgeClass(job.employment_type);
+        const salaryDisplay = formatSalary(job.salary_min, job.salary_max);
+        const requirementsList = Array.isArray(job.requirements) 
+            ? job.requirements.map(req => `<li>${req}</li>`).join('') 
+            : '<li>No specific requirements listed</li>';
+            
+        const applicationStats = job.application_stats ? `
+            <div class="mt-4 p-3 bg-light rounded">
+                <h6 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Application Statistics</h6>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <div class="p-2 border rounded text-center">
+                            <div class="h4 mb-0">${job.application_stats.total || 0}</div>
+                            <small class="text-muted">Total Applications</small>
+                        </div>
+                    </div>
+                    ${Object.entries(job.application_stats.statuses || {}).map(([status, count]) => `
+                        <div class="col-md-3">
+                            <div class="p-2 border rounded text-center">
+                                <div class="h4 mb-0">${count}</div>
+                                <small class="text-muted">${status.charAt(0).toUpperCase() + status.slice(1)}</small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
+        
+        document.getElementById('jobDetails').innerHTML = `
+            <div class="card-header bg-transparent">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">${job.title}</h3>
+                    <span class="badge ${jobTypeClass}">${job.employment_type}</span>
+                </div>
+                <div class="text-muted mt-2">
+                    <span><i class="fas fa-building me-2"></i>${job.company}</span>
+                    <span class="mx-3">|</span>
+                    <span><i class="fas fa-map-marker-alt me-2"></i>${job.location}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-4">
+                                <span class="text-muted">Category:</span>
+                                <span class="ms-2 fw-bold">${job.category}</span>
+                            </div>
+                            <div>
+                                <span class="text-muted">Salary:</span>
+                                <span class="ms-2 fw-bold">${salaryDisplay}</span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="me-4">
+                                <span class="text-muted">Posted:</span>
+                                <span class="ms-2">${formatDate(job.created_at)}</span>
+                            </div>
+                            <div>
+                                <span class="text-muted">Status:</span>
+                                <span class="ms-2 ${job.is_active ? 'text-success' : 'text-danger'}">
+                                    ${job.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="mb-3">Description</h5>
+                    <div class="p-3 bg-light rounded">
+                        ${job.description}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="mb-3">Requirements</h5>
+                    <ul class="p-3 bg-light rounded">
+                        ${requirementsList}
+                    </ul>
+                </div>
+                
+                ${applicationStats}
+            </div>
+        `;
+    }
+
+    // Fetch user's resumes for application form
+    async function fetchUserResumes() {
+        try {
+            const response = await fetch('/api/resumes/', {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load resumes');
+            }
+            
+            const data = await response.json();
+            userResumes = data.resumes || [];
+            
+            const resumeSelect = document.getElementById('resumeSelect');
+            if (userResumes.length === 0) {
+                resumeSelect.innerHTML = '<option value="">No resumes available</option>';
+                document.getElementById('applyButton').disabled = true;
+            } else {
+                resumeSelect.innerHTML = '<option value="">Choose a resume...</option>' + 
+                    userResumes.map(resume => `
+                        <option value="${resume.id}">${resume.filename} (${resume.match_score ? resume.match_score + '% match' : 'No match data'})</option>
+                    `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading resumes:', error);
+            showToast('Error loading your resumes.', 'danger');
+        }
+    }
+
+    // Submit job application
+    async function submitApplication() {
+        const resumeId = document.getElementById('resumeSelect').value;
+        const coverLetter = document.getElementById('coverLetter').value;
+        
+        if (!resumeId) {
+            showToast('Please select a resume to apply', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/jobs/${currentJobId}/apply`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    resume_id: resumeId,
+                    cover_letter: coverLetter
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to submit application');
+            }
+            
+            // Hide application form and show success message
+            document.getElementById('applicationSection').classList.add('d-none');
+            showApplicationSuccess('Your application has been submitted successfully!');
+            
+        } catch (error) {
+            console.error('Error submitting application:', error);
+            showToast(error.message || 'Error submitting application. Please try again.', 'danger');
+        }
+    }
+
+    // Show application success message
+    function showApplicationSuccess(message) {
+        const successEl = document.getElementById('applicationSuccess');
+        successEl.querySelector('span').textContent = message;
+        successEl.classList.remove('d-none');
+    }
+
+    // Format salary range
+    function formatSalary(min, max) {
+        if (!min && !max) return 'Not disclosed';
+        if (min && !max) return `$${min.toLocaleString()}+`;
+        if (!min && max) return `Up to $${max.toLocaleString()}`;
+        return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+    }
+
+    // Format date
+    function formatDate(dateString) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+
+    // Get badge class based on job type
+    function getJobTypeBadgeClass(type) {
+        switch (type?.toLowerCase()) {
+            case 'full-time': return 'bg-primary';
+            case 'part-time': return 'bg-info';
+            case 'contract': return 'bg-warning text-dark';
+            case 'internship': return 'bg-success';
+            case 'temporary': return 'bg-secondary';
+            default: return 'bg-secondary';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}AI-Powered ATS - Home{% endblock %}
+
+{% block content %}
+<style>
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(6, minmax(100px, auto));
+    gap: 12px;
+    margin-bottom: 2rem;
+}
+
+.bento-item {
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+}
+
+.bento-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    border-color: rgba(0, 0, 0, 0.05);
+}
+
+.hero-main {
+    grid-column: 1 / 8;
+    grid-row: 1 / 4;
+    background: rgba(240, 240, 250, 0.4);
+    color: #333;
+    text-align: left;
+    border-left: 2px solid #dee2e6;
+}
+
+.cta-buttons {
+    grid-column: 8 / 13;
+    grid-row: 1 / 3;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.ai-parsing {
+    grid-column: 8 / 13;
+    grid-row: 3 / 4;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.stats-1 {
+    grid-column: 1 / 4;
+    grid-row: 4 / 5;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.smart-matching {
+    grid-column: 4 / 8;
+    grid-row: 4 / 6;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.stats-2 {
+    grid-column: 8 / 10;
+    grid-row: 4 / 5;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.stats-3 {
+    grid-column: 10 / 13;
+    grid-row: 4 / 5;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.workflow {
+    grid-column: 1 / 4;
+    grid-row: 5 / 7;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.stats-4 {
+    grid-column: 8 / 13;
+    grid-row: 5 / 6;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.cta-final {
+    grid-column: 4 / 13;
+    grid-row: 6 / 7;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+.tech-stack {
+    grid-column: 8 / 13;
+    grid-row: 6 / 7;
+    background: rgba(248, 249, 250, 0.5);
+    color: #333;
+    border-left: 2px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .bento-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 10px;
+    }
+    
+    .bento-item {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+        min-height: 150px;
+    }
+    
+    .hero-main {
+        text-align: center;
+    }
+}
+
+.feature-icon {
+    font-size: 2rem;
+    margin-bottom: 0.8rem;
+    opacity: 0.5;
+    color: #6c757d;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+    color: #495057;
+}
+
+.tech-badge {
+    background: rgba(0, 0, 0, 0.03);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    margin: 0.15rem;
+    font-size: 0.8rem;
+    display: inline-block;
+    color: #6c757d;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+</style>
+
+<div class="bento-grid">
+    <!-- Hero Main -->
+    <div class="bento-item hero-main">
+        <div class="w-100">
+            <h1 class="mb-3">
+                <b>AI-Powered ATS</b>
+            </h1>
+            <p class="lead mb-4">
+                Transform your hiring process with intelligent resume parsing, smart candidate matching, and streamlined workflow management.
+            </p>
+            <p class="mb-0">
+                Already have an account? 
+                <a href="{{ url_for('dashboard.login_page') }}" class="text-secondary">
+                    <u>Sign in here</u>
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <!-- CTA Buttons -->
+    <div class="bento-item cta-buttons">
+        <div class="w-100">
+            <h5 class="mb-4">Get Started</h5>
+            <a href="#" class="btn btn-outline-secondary btn-lg w-100 mb-3" onclick="setUserRole('candidate')">
+                <i class="fas fa-user me-2"></i>Job Seeker
+            </a>
+            <a href="#" class="btn btn-outline-secondary btn-lg w-100" onclick="setUserRole('hr')">
+                <i class="fas fa-building me-2"></i>Employer
+            </a>
+        </div>
+    </div>
+
+    <!-- AI Parsing Feature -->
+    <div class="bento-item ai-parsing">
+        <i class="fas fa-brain feature-icon"></i>
+        <h5 class="mb-2">AI Resume Parsing</h5>
+        <p class="mb-0 small">Extract structured data from resumes with 95% accuracy using Mistral AI</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="bento-item stats-1">
+        <div class="stat-number">95%</div>
+        <h6>Parsing Accuracy</h6>
+        <p class="small mb-0">AI-powered extraction</p>
+    </div>
+
+    <div class="bento-item stats-2">
+        <div class="stat-number text-secondary">60%</div>
+        <h6>Time Saved</h6>
+        <p class="small mb-0">Automated processing</p>
+    </div>
+
+    <div class="bento-item stats-3">
+        <div class="stat-number text-secondary">1000+</div>
+        <h6>Resumes Processed</h6>
+        <p class="small mb-0">And growing daily</p>
+    </div>
+
+    <!-- Smart Matching -->
+    <div class="bento-item smart-matching">
+        <i class="fas fa-chart-line feature-icon"></i>
+        <h4 class="mb-3">Smart Matching Engine</h4>
+        <p class="mb-3">AI-powered matching between candidates and job requirements with detailed scoring, gap analysis, and recommendations.</p>
+        <div class="tech-badge">Skills Analysis</div>
+        <div class="tech-badge">Experience Matching</div>
+        <div class="tech-badge">Cultural Fit</div>
+    </div>
+
+    <!-- Workflow -->
+    <div class="bento-item workflow">
+        <i class="fas fa-tachometer-alt feature-icon"></i>
+        <h5 class="mb-3">Streamlined Workflow</h5>
+        <p class="small mb-3">Complete hiring pipeline management</p>
+        <div class="d-flex flex-column gap-2">
+            <div><i class="fas fa-check me-2"></i>Application Tracking</div>
+            <div><i class="fas fa-check me-2"></i>Candidate Dashboard</div>
+            <div><i class="fas fa-check me-2"></i>Interview Scheduling</div>
+        </div>
+    </div>
+
+    <!-- 24/7 Availability -->
+    <div class="bento-item stats-4">
+        <div class="stat-number text-secondary">24/7</div>
+        <h6>Always Available</h6>
+        <p class="small mb-0">Cloud-based platform</p>
+    </div>
+
+    <!-- Final CTA -->
+    <div class="bento-item cta-final">
+        <div class="w-100">
+            <h4 class="mb-3">Ready to Transform Hiring?</h4>
+            <p class="mb-3">Join companies using AI to find perfect candidates</p>
+            <a href="{{ url_for('dashboard.register_page') }}" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-rocket me-2"></i>Start Free Trial
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Technology Stack Section -->
+<div class="row mt-5">
+    <div class="col-12 text-center">
+        <h4 class="mb-4 text-muted">Powered by Advanced AI Technology</h4>
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+            <span class="badge bg-light text-secondary p-2 fs-6 border">
+                <i class="fas fa-robot me-2"></i>Mistral AI
+            </span>
+            <span class="badge bg-light text-secondary p-2 fs-6 border">
+                <i class="fas fa-flask me-2"></i>Flask
+            </span>
+            <span class="badge bg-light text-secondary p-2 fs-6 border">
+                <i class="fas fa-database me-2"></i>SQLAlchemy
+            </span>
+            <span class="badge bg-light text-secondary p-2 fs-6 border">
+                <i class="fas fa-file-pdf me-2"></i>PyPDF2
+            </span>
+            <span class="badge bg-light text-secondary p-2 fs-6 border">
+                <i class="fab fa-python me-2"></i>Python
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setUserRole(role) {
+    // Store the selected role in localStorage
+    localStorage.setItem('preferredRole', role);
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (token && user.id) {
+        // User is already logged in
+        if (user.role) {
+            // User already has a role assigned
+            if (user.role !== role) {
+                // Show warning that they're switching roles
+                showAlert(`You're already registered as a ${user.role === 'hr' ? 'Recruiter' : 'Job Seeker'}. Switching to ${role === 'hr' ? 'Recruiter' : 'Job Seeker'} mode.`, 'warning');
+                
+                // Update role via API
+                updateUserRole(role);
+            } else {
+                // Redirect to dashboard if they already have this role
+                window.location.href = '/dashboard';
+            }
+        } else {
+            // User is logged in but has no role yet
+            updateUserRole(role);
+        }
+    } else {
+        // User not logged in, redirect to GitHub login
+        window.location.href = '/api/auth/github/login';
+    }
+}
+
+async function updateUserRole(role) {
+    const token = localStorage.getItem('token');
+    
+    try {
+        const response = await fetch('/api/auth/update-role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ role })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Update user in localStorage
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Redirect to dashboard
+            window.location.href = '/dashboard';
+        } else {
+            const errorData = await response.json();
+            showAlert(errorData.error || 'Failed to update role', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating role:', error);
+        showAlert('Network error. Please try again.', 'danger');
+    }
+}
+</script>
+{% endblock %}

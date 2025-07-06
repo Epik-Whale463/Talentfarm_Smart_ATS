@@ -1,0 +1,809 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Management - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-alt me-2"></i>Resume Management</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+        <i class="fas fa-plus me-2"></i>Upload Resume
+    </button>
+</div>
+
+<!-- Resumes List -->
+<div class="row" id="resumesList">
+    <div class="col-12 text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading resumes...</p>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Resume</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="resumeFile" class="form-label">Select Resume File</label>
+                        <input type="file" class="form-control" id="resumeFile" accept=".pdf,.docx" required>
+                        <div class="form-text">Supported formats: PDF, DOCX (Max size: 16MB)</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="replaceExisting">
+                            <label class="form-check-label" for="replaceExisting">
+                                Replace existing resume if same filename
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadBtn">
+                    <i class="fas fa-upload me-2"></i>Upload & Parse
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resume Detail Modal -->
+<div class="modal fade" id="resumeDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resume Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resumeDetailContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="deleteResumeBtn">
+                    <i class="fas fa-trash me-2"></i>Delete Resume
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="deleteConfirmContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-2"></i>Delete Resume & Applications
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentResumeId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadResumes();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Upload button
+    document.getElementById('uploadBtn').addEventListener('click', uploadResume);
+    
+    // Delete button
+    document.getElementById('deleteResumeBtn').addEventListener('click', deleteResume);
+}
+
+async function loadResumes() {
+    const token = localStorage.getItem('token');
+    
+    try {
+        const response = await fetch('/api/resumes/list', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayResumes(data.resumes);
+        } else {
+            throw new Error('Failed to load resumes');
+        }
+    } catch (error) {
+        document.getElementById('resumesList').innerHTML = `
+            <div class="col-12 text-center">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <p>Error loading resumes. Please try again.</p>
+                <button class="btn btn-primary" onclick="loadResumes()">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function displayResumes(resumes) {
+    const container = document.getElementById('resumesList');
+    
+    if (resumes.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                <h4>No Resumes Yet</h4>
+                <p class="text-muted">Upload your first resume to get started with AI-powered parsing</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-plus me-2"></i>Upload Resume
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = resumes.map(resume => `
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm resume-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title text-truncate" style="max-width: 70%;" title="${resume.filename}">${resume.filename}</h5>
+                        <span class="badge bg-success">Parsed</span>
+                    </div>
+                    
+                    <div class="contact-info mb-3 flex-shrink-0">
+                        <p class="mb-1"><strong>Name:</strong> <span class="text-break-word">${resume.name || 'Not extracted'}</span></p>
+                        <p class="mb-1"><strong>Email:</strong> <span class="text-break-word">${resume.email || 'Not extracted'}</span></p>
+                        <p class="mb-1"><strong>Phone:</strong> ${resume.phone || 'Not extracted'}</p>
+                    </div>
+                    
+                    <div class="mb-3 flex-grow-1">
+                        <p class="mb-1"><strong>Skills:</strong></p>
+                        <div class="skills-container">
+                            ${(resume.skills || []).slice(0, 3).map(skill => 
+                                `<span class="badge bg-light text-dark" title="${skill}">${skill}</span>`
+                            ).join('')}
+                            ${(resume.skills || []).length > 3 ? 
+                                `<span class="badge bg-secondary">+${(resume.skills || []).length - 3} more</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                Uploaded: ${new Date(resume.created_at).toLocaleDateString()}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100">
+                        <button class="btn btn-outline-primary btn-sm" onclick="viewResumeDetails(${resume.id})">
+                            <i class="fas fa-eye me-1"></i>View
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="getResumeInsights(${resume.id})" title="AI Insights">
+                            <i class="fas fa-brain me-1"></i>Insights
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteResume(${resume.id}, '${resume.filename}')" title="Delete Resume">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function uploadResume() {
+    const fileInput = document.getElementById('resumeFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showAlert('Please select a file', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const token = localStorage.getItem('token');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    try {
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+        uploadBtn.disabled = true;
+        
+        const response = await fetch('/api/resumes/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showAlert('Resume uploaded and parsed successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            loadResumes();
+            document.getElementById('uploadForm').reset();
+        } else {
+            showAlert(data.error || 'Upload failed', 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error. Please try again.', 'danger');
+    } finally {
+        uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload & Parse';
+        uploadBtn.disabled = false;
+    }
+}
+
+async function viewResumeDetails(resumeId) {
+    const token = localStorage.getItem('token');
+    
+    try {
+        const response = await fetch(`/api/resumes/${resumeId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayResumeDetails(data.resume);
+            currentResumeId = resumeId;
+            new bootstrap.Modal(document.getElementById('resumeDetailModal')).show();
+        } else {
+            showAlert('Failed to load resume details', 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error', 'danger');
+    }
+}
+
+function displayResumeDetails(resume) {
+    const content = document.getElementById('resumeDetailContent');
+    const parsedData = resume.parsed_data || {};
+    
+    // Helper function to safely get nested properties
+    const safeGet = (obj, path, fallback = 'N/A') => {
+        return path.split('.').reduce((o, p) => (o && o[p]) ? o[p] : fallback, obj);
+    };
+    
+    // Helper function to display array data
+    const displayArray = (arr, emptyMessage = 'None available') => {
+        return (arr && arr.length > 0) ? arr : [emptyMessage];
+    };
+    
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-primary border-bottom pb-2">Personal Information</h6>
+                <table class="table table-sm table-striped">
+                    <tr>
+                        <td><strong>Name:</strong></td>
+                        <td>${safeGet(parsedData, 'personal_info.name') || resume.name || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email:</strong></td>
+                        <td class="text-break">${safeGet(parsedData, 'personal_info.email') || resume.email || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Phone:</strong></td>
+                        <td>${safeGet(parsedData, 'personal_info.phone') || resume.phone || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Location:</strong></td>
+                        <td>${safeGet(parsedData, 'personal_info.location')}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-primary border-bottom pb-2">File Information</h6>
+                <table class="table table-sm table-striped">
+                    <tr>
+                        <td><strong>Filename:</strong></td>
+                        <td class="text-break">${resume.filename}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Uploaded:</strong></td>
+                        <td>${new Date(resume.created_at).toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Updated:</strong></td>
+                        <td>${new Date(resume.updated_at).toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Parse Status:</strong></td>
+                        <td><span class="badge bg-success">Successfully Parsed</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        ${parsedData.summary ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Professional Summary</h6>
+                <p class="text-muted fst-italic">"${parsedData.summary}"</p>
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Skills</h6>
+                <div class="mb-3 skills-container">
+                    ${displayArray(parsedData.skills || resume.skills).map(skill => 
+                        skill === 'None available' ? 
+                        `<span class="text-muted">${skill}</span>` :
+                        `<span class="badge bg-primary me-1 mb-1" title="${skill}">${skill}</span>`
+                    ).join('')}
+                </div>
+                ${(parsedData.skills || resume.skills || []).length > 0 ? 
+                    `<small class="text-muted">Total: ${(parsedData.skills || resume.skills || []).length} skills</small>` : ''}
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Experience</h6>
+                ${displayArray(parsedData.experience || resume.experience).map(exp => 
+                    typeof exp === 'string' ? 
+                    `<p class="text-muted">${exp}</p>` :
+                    `<div class="card mb-2 border-start border-primary border-3">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0 text-primary">${exp.position || 'Position not specified'}</h6>
+                                <small class="text-muted">${exp.duration || 'Duration not specified'}</small>
+                            </div>
+                            <p class="mb-1 fw-bold text-secondary">${exp.company || 'Company not specified'}</p>
+                            ${exp.description ? `<p class="mb-0 small text-muted">${exp.description}</p>` : ''}
+                        </div>
+                    </div>`
+                ).join('')}
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Education</h6>
+                ${displayArray(parsedData.education || resume.education).map(edu => 
+                    typeof edu === 'string' ? 
+                    `<p class="text-muted">${edu}</p>` :
+                    `<div class="card mb-2 border-start border-success border-3">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="mb-0 text-success">${edu.degree || 'Degree not specified'}</h6>
+                                <small class="text-muted">${edu.graduation_year || 'Year not specified'}</small>
+                            </div>
+                            <p class="mb-1 fw-bold text-secondary">${edu.institution || 'Institution not specified'}</p>
+                            ${edu.gpa ? `<p class="mb-0 small text-muted">GPA: ${edu.gpa}</p>` : ''}
+                            ${edu.relevant_coursework && edu.relevant_coursework.length > 0 ? 
+                                `<div class="mt-2">
+                                    <small class="text-muted">Relevant Coursework:</small><br>
+                                    ${edu.relevant_coursework.map(course => 
+                                        `<span class="badge bg-light text-dark me-1 mb-1 small">${course}</span>`
+                                    ).join('')}
+                                </div>` : ''}
+                        </div>
+                    </div>`
+                ).join('')}
+            </div>
+        </div>
+        
+        ${parsedData.certifications && parsedData.certifications.length > 0 ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Certifications</h6>
+                <div class="mb-2">
+                    ${parsedData.certifications.map(cert => 
+                        `<span class="badge bg-warning text-dark me-1 mb-1">${cert}</span>`
+                    ).join('')}
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        ${parsedData.languages && parsedData.languages.length > 0 ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary border-bottom pb-2">Languages</h6>
+                <div class="mb-2">
+                    ${parsedData.languages.map(lang => 
+                        `<span class="badge bg-info me-1 mb-1">${lang}</span>`
+                    ).join('')}
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-light border">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>Parsing Quality:</strong> 
+                        Data extracted using AI-powered resume parsing with ${(resume.raw_text || '').length || 0} characters of raw text processed.
+                        ${Object.keys(parsedData).length > 0 ? 
+                            `Successfully identified ${Object.keys(parsedData).length} data sections.` : 
+                            'Fallback data display mode active.'}
+                    </small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function confirmDeleteResume(resumeId, filename) {
+    // Try to delete normally first, the backend will handle conflicts
+    deleteResumeById(resumeId);
+}
+
+async function deleteResume() {
+    if (currentResumeId) {
+        await deleteResumeById(currentResumeId);
+        bootstrap.Modal.getInstance(document.getElementById('resumeDetailModal')).hide();
+    }
+}
+
+async function deleteResumeById(resumeId, forceDelete = false) {
+    const token = localStorage.getItem('token');
+    
+    try {
+        const url = forceDelete ? `/api/resumes/${resumeId}?force=true` : `/api/resumes/${resumeId}`;
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showAlert(data.message || 'Resume deleted successfully', 'success');
+            loadResumes();
+        } else if (response.status === 409) {
+            // Resume is used in applications - show detailed confirmation
+            const data = await response.json();
+            handleResumeInUseError(resumeId, data);
+        } else {
+            const data = await response.json();
+            showAlert(data.error || 'Failed to delete resume', 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error', 'danger');
+    }
+}
+
+function handleResumeInUseError(resumeId, errorData) {
+    const applicationsCount = errorData.applications_count;
+    const applications = errorData.applications || [];
+    
+    // Create detailed content for the modal
+    let content = `
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Warning:</strong> This resume is currently used in ${applicationsCount} job application(s).
+        </div>
+        <p>Deleting this resume will also delete the following applications:</p>
+        <div class="list-group mb-3">
+    `;
+    
+    applications.forEach((app, index) => {
+        const appliedDate = app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown date';
+        content += `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${app.job_title}</h6>
+                    <small>${appliedDate}</small>
+                </div>
+                <p class="mb-1">${app.company}</p>
+                <small>Status: <span class="badge bg-secondary">${app.status}</span></small>
+            </div>
+        `;
+    });
+    
+    content += `
+        </div>
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>This action cannot be undone!</strong> Are you sure you want to proceed?
+        </div>
+    `;
+    
+    // Set modal content
+    document.getElementById('deleteConfirmContent').innerHTML = content;
+    
+    // Set up the confirm button
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.onclick = () => {
+        bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+        deleteResumeById(resumeId, true); // Force delete
+    };
+    
+    // Show the modal
+    new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+}
+
+// Resume Insights functionality (same as in candidate dashboard)
+async function getResumeInsights(resumeId) {
+    try {
+        // Show loading indicator
+        showAlert('Generating AI insights for your resume...', 'info', 0);
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/resumes/${resumeId}/insights`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        // Remove loading alert
+        const alertContainer = document.getElementById('alertContainer');
+        if (alertContainer) {
+            alertContainer.innerHTML = '';
+        }
+        
+        if (data.success) {
+            displayInsightsModal(data.insights);
+        } else {
+            showAlert(data.error || 'Failed to generate insights', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error fetching resume insights:', error);
+        showAlert('Failed to generate insights. Please try again.', 'danger');
+    }
+}
+
+function displayInsightsModal(insights) {
+    // Create modal HTML (reuse the same modal from candidate dashboard)
+    const modalHtml = `
+        <div class="modal fade" id="insightsModal" tabindex="-1" aria-labelledby="insightsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="insightsModalLabel">
+                            <i class="fas fa-brain me-2"></i>AI Resume Insights
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${generateInsightsHTML(insights)}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadInsightsReport(${JSON.stringify(insights).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-download me-1"></i>Download Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('insightsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('insightsModal'));
+    modal.show();
+}
+
+// Helper functions for insights display
+function generateInsightsHTML(insights) {
+    let html = '';
+    
+    // Technical Assessment Overview
+    if (insights.technical_assessment) {
+        const assessment = insights.technical_assessment;
+        html += `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Technical Assessment</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="display-4 text-primary">${assessment.overall_rating}/10</div>
+                                <small class="text-muted">Overall Rating</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="h4 text-success">${assessment.technical_strength}</div>
+                                <small class="text-muted">Technical Level</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-0">${assessment.summary}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Skills Analysis Summary
+    if (insights.skills_analysis) {
+        const skills = insights.skills_analysis;
+        html += `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Skills Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+        `;
+        
+        // Technical Skills
+        if (skills.technical_skills) {
+            Object.keys(skills.technical_skills).forEach(category => {
+                if (skills.technical_skills[category] && skills.technical_skills[category].length > 0) {
+                    html += `
+                        <div class="col-md-6 mb-3">
+                            <h6>${category.replace(/_/g, ' ').toUpperCase()}</h6>
+                            <div class="skill-list">
+                    `;
+                    skills.technical_skills[category].forEach(skill => {
+                        const badgeClass = getProficiencyBadgeClass(skill.proficiency);
+                        html += `
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small">${skill.skill}</span>
+                                <span class="badge ${badgeClass} small">${skill.proficiency}</span>
+                            </div>
+                        `;
+                    });
+                    html += `</div></div>`;
+                }
+            });
+        }
+        
+        html += `</div></div></div>`;
+    }
+    
+    // Key Strengths and Recommendations in a simplified format
+    if (insights.strengths || insights.recommendations) {
+        html += `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-star me-2"></i>Key Strengths</h6>
+                        </div>
+                        <div class="card-body">
+        `;
+        
+        if (insights.strengths) {
+            insights.strengths.slice(0, 3).forEach(strength => {
+                html += `
+                    <div class="mb-2">
+                        <strong class="small">${strength.strength}</strong>
+                        <p class="mb-0 small text-muted">${strength.evidence}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Top Recommendations</h6>
+                        </div>
+                        <div class="card-body">
+        `;
+        
+        if (insights.recommendations && insights.recommendations.immediate_improvements) {
+            insights.recommendations.immediate_improvements.slice(0, 3).forEach(improvement => {
+                const priorityClass = improvement.priority === 'High' ? 'danger' : 
+                                    improvement.priority === 'Medium' ? 'warning' : 'info';
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong class="small">${improvement.area}</strong>
+                            <span class="badge bg-${priorityClass} small">${improvement.priority}</span>
+                        </div>
+                        <p class="mb-0 small text-muted">${improvement.action}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
+function getProficiencyBadgeClass(proficiency) {
+    switch (proficiency?.toLowerCase()) {
+        case 'expert': return 'bg-success';
+        case 'advanced': return 'bg-primary';
+        case 'intermediate': return 'bg-warning';
+        case 'beginner': return 'bg-secondary';
+        default: return 'bg-info';
+    }
+}
+
+function downloadInsightsReport(insights) {
+    // Create a formatted text report
+    let report = "RESUME INSIGHTS REPORT\n";
+    report += "=".repeat(50) + "\n\n";
+    
+    if (insights.technical_assessment) {
+        report += "TECHNICAL ASSESSMENT\n";
+        report += "-".repeat(20) + "\n";
+        report += `Overall Rating: ${insights.technical_assessment.overall_rating}/10\n`;
+        report += `Technical Strength: ${insights.technical_assessment.technical_strength}\n`;
+        report += `Summary: ${insights.technical_assessment.summary}\n\n`;
+    }
+    
+    if (insights.strengths) {
+        report += "KEY STRENGTHS\n";
+        report += "-".repeat(20) + "\n";
+        insights.strengths.forEach((strength, index) => {
+            report += `${index + 1}. ${strength.strength}\n`;
+            report += `   Evidence: ${strength.evidence}\n`;
+            report += `   Market Value: ${strength.market_value}\n\n`;
+        });
+    }
+    
+    if (insights.recommendations && insights.recommendations.immediate_improvements) {
+        report += "RECOMMENDATIONS\n";
+        report += "-".repeat(20) + "\n";
+        insights.recommendations.immediate_improvements.forEach((rec, index) => {
+            report += `${index + 1}. ${rec.area} (${rec.priority} Priority)\n`;
+            report += `   Action: ${rec.action}\n\n`;
+        });
+    }
+    
+    report += `\nGenerated on: ${new Date().toLocaleString()}\n`;
+    report += "Generated by: AI-Powered ATS Resume Insights\n";
+    
+    // Create and download file
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `resume_insights_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    showAlert('Insights report downloaded successfully!', 'success');
+}
+</script>
+{% endblock %}

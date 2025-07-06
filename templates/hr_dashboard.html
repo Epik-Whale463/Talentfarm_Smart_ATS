@@ -1,0 +1,2012 @@
+{% extends "base.html" %}
+
+{% block title %}HR Dashboard - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-building me-2"></i>HR Dashboard</h2>
+    <div>
+        <span class="badge bg-primary me-2">HR User</span>
+        <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Dashboard Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-briefcase text-primary fa-2x"></i>
+                    </div>
+                </div>
+                <h4 class="mb-1" id="totalJobs">-</h4>
+                <p class="text-muted mb-0">Total Jobs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-user-check text-success fa-2x"></i>
+                    </div>
+                </div>
+                <h4 class="mb-1" id="totalApplications">-</h4>
+                <p class="text-muted mb-0">Total Applications</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-clock text-info fa-2x"></i>
+                    </div>
+                </div>
+                <h4 class="mb-1" id="pendingReviews">-</h4>
+                <p class="text-muted mb-0">Pending Reviews</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-star text-warning fa-2x"></i>
+                    </div>
+                </div>
+                <h4 class="mb-1" id="topCandidates">-</h4>
+                <p class="text-muted mb-0">Top Candidates</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-primary w-100 p-3 h-100 d-flex flex-column align-items-center" onclick="openJobPostingModal()">
+                            <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                            <span>Post New Job</span>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100 p-3 h-100 d-flex flex-column align-items-center" onclick="viewApplications()">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                            <span>View Applications</span>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-warning w-100 p-3 h-100 d-flex flex-column align-items-center" onclick="openInterviewManagement()">
+                            <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                            <span>Manage Interviews</span>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-info w-100 p-3 h-100 d-flex flex-column align-items-center" onclick="generateReport()">
+                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                            <span>Generate Report</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Posting Modal -->
+<div class="modal fade" id="jobPostingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Post New Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="jobPostingForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">Job Title</label>
+                        <input type="text" class="form-control" name="title" required>
+                        <div class="invalid-feedback">Please enter a job title</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company</label>
+                            <input type="text" class="form-control" name="company" required>
+                            <div class="invalid-feedback">Please enter company name</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" name="location" required>
+                            <div class="invalid-feedback">Please enter job location</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Job Type</label>
+                            <select class="form-select" name="type" required>
+                                <option value="">Select type...</option>
+                                <option value="full-time">Full Time</option>
+                                <option value="part-time">Part Time</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job type</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category" required>
+                                <option value="">Select category...</option>
+                                <option value="software">Software Development</option>
+                                <option value="data">Data Science</option>
+                                <option value="design">Design</option>
+                                <option value="product">Product Management</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="sales">Sales</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job category</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Min Salary (Annual)</label>
+                            <input type="number" class="form-control" name="min_salary">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max Salary (Annual)</label>
+                            <input type="number" class="form-control" name="max_salary">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Job Description</label>
+                        <textarea class="form-control" name="description" rows="5" required></textarea>
+                        <div class="invalid-feedback">Please enter job description</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Requirements</label>
+                        <textarea class="form-control" name="requirements" rows="3" required></textarea>
+                        <div class="invalid-feedback">Please enter job requirements</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitJobPosting()">Post Job</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Applications Modal -->
+<div class="modal fade" id="applicationsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Applications</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <select class="form-select" id="jobFilter">
+                            <option value="">All Jobs</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="reviewing">Reviewing</option>
+                            <option value="interview">Interview</option>
+                            <option value="hired">Hired</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="applicantSearch" placeholder="Search applicants...">
+                    </div>
+                </div>
+                <div id="applicationsTable"></div>
+                <div id="applicationsPagination" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HR Job Management Section -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Job Management</h5>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary btn-sm" onclick="loadHRJobs()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createJobModal">
+                    <i class="fas fa-plus me-1"></i>Add New Job
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Job Filters -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <select id="hrJobStatusFilter" class="form-select form-select-sm" onchange="loadHRJobs()">
+                    <option value="all">All Status</option>
+                    <option value="active" selected>Active Jobs</option>
+                    <option value="inactive">Inactive Jobs</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="hrJobCategoryFilter" class="form-select form-select-sm" onchange="loadHRJobs()">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="hrJobDateFilter" class="form-select form-select-sm" onchange="loadHRJobs()">
+                    <option value="all">All Time</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d" selected>Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <input type="text" id="hrJobSearch" class="form-control" placeholder="Search jobs...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="loadHRJobs()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jobs Table -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="selectAllJobs" class="form-check-input">
+                        </th>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Applications</th>
+                        <th>Created</th>
+                        <th>Last Activity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="hrJobsTable">
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="d-flex justify-content-between mt-3">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="bulkActionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Bulk Actions
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="bulkActionDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="bulkJobStatusChange(true)">Activate Selected</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="bulkJobStatusChange(false)">Deactivate Selected</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="bulkCategoryChange()">Change Category</a></li>
+                </ul>
+            </div>
+            
+            <!-- Pagination -->
+            <nav aria-label="Jobs pagination">
+                <ul class="pagination pagination-sm mb-0" id="hrJobsPagination">
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Job Metrics and Analytics Section -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Job Performance Analytics</h5>
+            <div class="btn-group">
+                <select id="metricsTimeRange" class="form-select form-select-sm" onchange="loadJobMetrics()">
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d" selected>Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row" id="jobMetricsContainer">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Applications Over Time</h6>
+                        <canvas id="applicationsTimeChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Status Breakdown</h6>
+                        <canvas id="statusBreakdownChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Category Performance</h6>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Jobs</th>
+                                        <th>Applications</th>
+                                        <th>Avg/Job</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categoryPerformanceTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Top Performing Jobs</h6>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Job Title</th>
+                                        <th>Applications</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topJobsTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Job Modal -->
+<div class="modal fade" id="editJobModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editJobForm" class="needs-validation" novalidate>
+                    <input type="hidden" id="editJobId">
+                    <div class="mb-3">
+                        <label class="form-label">Job Title</label>
+                        <input type="text" class="form-control" id="editJobTitle" required>
+                        <div class="invalid-feedback">Please enter a job title</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company</label>
+                            <input type="text" class="form-control" id="editJobCompany" required>
+                            <div class="invalid-feedback">Please enter company name</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="editJobLocation" required>
+                            <div class="invalid-feedback">Please enter job location</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Job Type</label>
+                            <select class="form-select" id="editJobType" required>
+                                <option value="">Select type...</option>
+                                <option value="full-time">Full Time</option>
+                                <option value="part-time">Part Time</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job type</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="editJobCategory" required>
+                                <option value="">Select category...</option>
+                                <option value="software">Software Development</option>
+                                <option value="data">Data Science</option>
+                                <option value="design">Design</option>
+                                <option value="product">Product Management</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="sales">Sales</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job category</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Min Salary (Annual)</label>
+                            <input type="number" class="form-control" id="editMinSalary">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max Salary (Annual)</label>
+                            <input type="number" class="form-control" id="editMaxSalary">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Job Description</label>
+                        <textarea class="form-control" id="editJobDescription" rows="5" required></textarea>
+                        <div class="invalid-feedback">Please enter job description</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Requirements</label>
+                        <textarea class="form-control" id="editJobRequirements" rows="3" required></textarea>
+                        <div class="invalid-feedback">Please enter job requirements</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateHRJob()">Update Job</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Job Modal -->
+<div class="modal fade" id="createJobModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createJobForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">Job Title</label>
+                        <input type="text" class="form-control" name="title" required>
+                        <div class="invalid-feedback">Please enter a job title</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company</label>
+                            <input type="text" class="form-control" name="company" required>
+                            <div class="invalid-feedback">Please enter company name</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" name="location" required>
+                            <div class="invalid-feedback">Please enter job location</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Job Type</label>
+                            <select class="form-select" name="type" required>
+                                <option value="">Select type...</option>
+                                <option value="full-time">Full Time</option>
+                                <option value="part-time">Part Time</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job type</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category" required>
+                                <option value="">Select category...</option>
+                                <option value="software">Software Development</option>
+                                <option value="data">Data Science</option>
+                                <option value="design">Design</option>
+                                <option value="product">Product Management</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="sales">Sales</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div class="invalid-feedback">Please select job category</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Min Salary (Annual)</label>
+                            <input type="number" class="form-control" name="min_salary">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max Salary (Annual)</label>
+                            <input type="number" class="form-control" name="max_salary">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Job Description</label>
+                        <textarea class="form-control" name="description" rows="5" required></textarea>
+                        <div class="invalid-feedback">Please enter job description</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Requirements</label>
+                        <textarea class="form-control" name="requirements" rows="3" required></textarea>
+                        <div class="invalid-feedback">Please enter job requirements</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createHRJob()">Create Job</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interview Scheduling Modal -->
+<div class="modal fade" id="scheduleInterviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule Interview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleInterviewForm">
+                    <input type="hidden" id="interviewApplicationId" name="application_id">
+                    
+                    <!-- Candidate Info -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Candidate</label>
+                            <div class="p-2 bg-light rounded" id="candidateInfo">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Position</label>
+                            <div class="p-2 bg-light rounded" id="positionInfo">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Interview Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="interviewType" class="form-label">Interview Type</label>
+                            <select class="form-select" id="interviewType" name="interview_type" required>
+                                <option value="phone">Phone Interview</option>
+                                <option value="video">Video Interview</option>
+                                <option value="technical" selected>Technical Interview</option>
+                                <option value="hr">HR Interview</option>
+                                <option value="final">Final Interview</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="interviewTitle" class="form-label">Interview Title</label>
+                            <input type="text" class="form-control" id="interviewTitle" name="title" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="interviewDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="interviewDescription" name="description" rows="3" placeholder="Interview agenda, topics to cover, etc."></textarea>
+                    </div>
+                    
+                    <!-- Scheduling -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="interviewDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="interviewDate" name="interview_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="interviewTime" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="interviewTime" name="interview_time" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="duration" class="form-label">Duration (minutes)</label>
+                            <select class="form-select" id="duration" name="duration_minutes">
+                                <option value="30">30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60" selected>1 hour</option>
+                                <option value="90">1.5 hours</option>
+                                <option value="120">2 hours</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="interviewLocation" class="form-label">Location/Room</label>
+                            <input type="text" class="form-control" id="interviewLocation" name="location" placeholder="Conference Room A, Zoom, etc.">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="meetingLink" class="form-label">Meeting Link (for video interviews)</label>
+                        <input type="url" class="form-control" id="meetingLink" name="meeting_link" placeholder="https://zoom.us/j/...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitInterviewSchedule()">Schedule Interview</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interview Management Modal -->
+<div class="modal fade" id="interviewManagementModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Interview Management</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters and Actions -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="interviewStatusFilter" onchange="loadInterviews()">
+                            <option value="">All Statuses</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="interviewTypeFilter" onchange="loadInterviews()">
+                            <option value="">All Types</option>
+                            <option value="phone">Phone</option>
+                            <option value="video">Video</option>
+                            <option value="technical">Technical</option>
+                            <option value="hr">HR</option>
+                            <option value="final">Final</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="date" class="form-control form-control-sm" id="interviewDateFrom" onchange="loadInterviews()">
+                            <span class="input-group-text">to</span>
+                            <input type="date" class="form-control form-control-sm" id="interviewDateTo" onchange="loadInterviews()">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interviews Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Candidate & Position</th>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Scheduled</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="interviewsTableBody">
+                            <!-- Will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <nav id="interviewsPagination" aria-label="Interviews pagination">
+                    <!-- Will be populated dynamically -->
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+    loadJobsForFilter();
+    loadHRJobs();
+    loadJobMetrics();
+    
+    // Setup auto-refresh every 30 seconds for real-time updates
+    setInterval(function() {
+        loadDashboardData();
+    }, 30000);
+    
+    // Setup event listeners
+    document.getElementById('selectAllJobs')?.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('#hrJobsTable input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+    
+    // Interview scheduling form submission
+    const scheduleInterviewForm = document.getElementById('scheduleInterviewForm');
+    if (scheduleInterviewForm) {
+        scheduleInterviewForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await submitInterviewSchedule();
+        });
+    }
+});
+
+// Helper function to get auth headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+async function loadDashboardData() {
+    try {
+        // Load application stats
+        const statsResponse = await fetch('/api/jobs/applications/stats/hr', {
+            headers: getAuthHeaders()
+        });
+        
+        // Load HR metrics for additional data
+        const metricsResponse = await fetch('/api/jobs/hr/metrics?time_range=30d', {
+            headers: getAuthHeaders()
+        });
+        
+        let statsData = {};
+        let metricsData = {};
+        
+        if (statsResponse.ok) {
+            const result = await statsResponse.json();
+            statsData = result.stats || {};
+        }
+        
+        if (metricsResponse.ok) {
+            const result = await metricsResponse.json();
+            metricsData = result.metrics || {};
+        }
+        
+        // Combine data and update dashboard
+        updateDashboardStats(statsData, metricsData);
+        
+        // Load recent applications
+        loadRecentApplications();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showAlert('Error loading dashboard data', 'danger');
+    }
+}
+
+function updateDashboardStats(statsData, metricsData) {
+    // Update main stats cards
+    document.getElementById('totalJobs').textContent = metricsData.total_jobs || 0;
+    document.getElementById('totalApplications').textContent = statsData.total || 0;
+    document.getElementById('pendingReviews').textContent = statsData.pending || 0;
+    
+    // Calculate top candidates (shortlisted + reviewed)
+    const topCandidates = (statsData.shortlisted || 0) + (statsData.reviewed || 0);
+    document.getElementById('topCandidates').textContent = topCandidates;
+    
+    // Update analytics if elements exist
+    if (document.getElementById('applicationRate')) {
+        // Calculate rates based on available data
+        const totalJobs = metricsData.total_jobs || 1;
+        const totalApplications = statsData.total || 0;
+        const applicationRate = totalJobs > 0 ? Math.round((totalApplications / totalJobs) * 10) : 0; // Applications per job * 10 for percentage-like display
+        
+        const pendingApplications = statsData.pending || 0;
+        const interviewRate = totalApplications > 0 ? Math.round(((statsData.shortlisted || 0) / totalApplications) * 100) : 0;
+        
+        const hireRate = totalApplications > 0 ? Math.round(((statsData.reviewed || 0) / totalApplications) * 100) : 0;
+        
+        document.getElementById('applicationRate').textContent = Math.min(applicationRate, 100) + '%';
+        document.getElementById('interviewRate').textContent = interviewRate + '%';
+        document.getElementById('hireRate').textContent = hireRate + '%';
+        
+        document.getElementById('applicationRateBar').style.width = Math.min(applicationRate, 100) + '%';
+        document.getElementById('interviewRateBar').style.width = interviewRate + '%';
+        document.getElementById('hireRateBar').style.width = hireRate + '%';
+    }
+}
+
+async function loadRecentApplications() {
+    try {
+        const response = await fetch('/api/jobs/applications/recent', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const applications = result.applications || [];
+            displayRecentApplications(applications);
+        } else {
+            document.getElementById('recentApplications').innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-muted fa-2x mb-2"></i>
+                    <p class="text-muted">No recent applications found</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading recent applications:', error);
+        document.getElementById('recentApplications').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle text-danger fa-2x mb-2"></i>
+                <p class="text-danger">Error loading applications</p>
+            </div>
+        `;
+    }
+}
+
+function displayRecentApplications(applications) {
+    const container = document.getElementById('recentApplications');
+    
+    if (!container) return;
+    
+    if (!applications || applications.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-inbox text-muted fa-2x mb-2"></i>
+                <p class="text-muted">No recent applications</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const applicationsHtml = applications.map(app => `
+        <div class="d-flex align-items-center justify-content-between py-3 border-bottom">
+            <div class="d-flex align-items-center">
+                <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                    <i class="fas fa-user text-primary"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0">${app.resume?.name || app.candidate_name || 'Unknown'}</h6>
+                    <small class="text-muted d-block">${app.job?.title || app.job_title || 'Unknown Position'}</small>
+                    <small class="text-muted">${app.job?.company || app.company || 'Unknown Company'}</small>
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-${getStatusColor(app.status)} small">${app.status || 'Pending'}</span>
+                <div class="small text-muted">${formatDate(app.created_at || app.applied_at)}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = applicationsHtml;
+}
+
+function getStatusColor(status) {
+    switch(status?.toLowerCase()) {
+        case 'hired': 
+        case 'approved': return 'success';
+        case 'rejected': return 'danger';
+        case 'interview': return 'info';
+        case 'reviewing': return 'primary';
+        default: return 'warning';
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+function refreshDashboard() {
+    showAlert('Refreshing dashboard...', 'info');
+    loadDashboardData();
+    loadHRJobs();
+    loadJobMetrics();
+}
+
+function viewApplications() {
+    const modal = new bootstrap.Modal(document.getElementById('applicationsModal'));
+    modal.show();
+    loadApplications();
+}
+
+function generateReport() {
+    showAlert('Report generation feature coming soon!', 'info');
+}
+
+function openJobPostingModal() {
+    const modal = new bootstrap.Modal(document.getElementById('jobPostingModal'));
+    modal.show();
+}
+
+async function submitJobPosting() {
+    const form = document.getElementById('jobPostingForm');
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+
+    const formData = new FormData(form);
+    const jobData = Object.fromEntries(formData.entries());
+    
+    // Convert salary fields to numbers
+    if (jobData.min_salary) jobData.min_salary = Number(jobData.min_salary);
+    if (jobData.max_salary) jobData.max_salary = Number(jobData.max_salary);
+    
+    // Parse requirements as an array if comma-separated
+    if (jobData.requirements && typeof jobData.requirements === 'string') {
+        jobData.requirements = jobData.requirements
+            .split(',')
+            .map(req => req.trim())
+            .filter(req => req);
+    }
+    
+    try {
+        const response = await fetch('/api/jobs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify(jobData)
+        });
+        
+        if (response.ok) {
+            showAlert('Job posted successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('jobPostingModal')).hide();
+            form.reset();
+            loadDashboardData();
+            loadHRJobs();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Error posting job', 'danger');
+        }
+    } catch (error) {
+        console.error('Error posting job:', error);
+        showAlert('Error posting job', 'danger');
+    }
+}
+
+async function loadJobsForFilter() {
+    try {
+        const response = await fetch('/api/jobs/hr', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const select = document.getElementById('jobFilter');
+            if (select) {
+                select.innerHTML = '<option value="">All Jobs</option>' +
+                    data.jobs.map(job => `
+                        <option value="${job.id}">${job.title} - ${job.company}</option>
+                    `).join('');
+            }
+            
+            // Also populate category filter
+            const categorySelect = document.getElementById('hrJobCategoryFilter');
+            if (categorySelect && data.filters && data.filters.categories) {
+                categorySelect.innerHTML = '<option value="">All Categories</option>' +
+                    data.filters.categories.map(category => 
+                        `<option value="${category}">${category}</option>`
+                    ).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading jobs for filter:', error);
+    }
+}
+
+async function loadApplications(page = 1) {
+    const jobId = document.getElementById('jobFilter')?.value;
+    const status = document.getElementById('statusFilter')?.value;
+    const search = document.getElementById('applicantSearch')?.value;
+    
+    try {
+        const queryParams = new URLSearchParams({
+            page,
+            per_page: 10
+        });
+        
+        if (jobId) queryParams.append('job_id', jobId);
+        if (status) queryParams.append('status', status);
+        if (search) queryParams.append('search', search);
+        
+        const response = await fetch(`/api/jobs/hr/applications?${queryParams}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayApplications(data.applications, data.pagination);
+        } else {
+            document.getElementById('applicationsTable').innerHTML = `
+                <div class="alert alert-danger">
+                    Error loading applications
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading applications:', error);
+        document.getElementById('applicationsTable').innerHTML = `
+            <div class="alert alert-danger">
+                Error loading applications
+            </div>
+        `;
+    }
+}
+
+function displayApplications(applications, pagination) {
+    const container = document.getElementById('applicationsTable');
+    
+    if (!applications || applications.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info">
+                No applications found
+            </div>
+        `;
+        return;
+    }
+    
+    const table = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Job</th>
+                        <th>Match Score</th>
+                        <th>Status</th>
+                        <th>Applied</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${applications.map(app => `
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-2">
+                                        <i class="fas fa-user text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">${app.candidate?.name || 'Unknown'}</div>
+                                        <small class="text-muted">${app.candidate?.email || ''}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${app.job?.title || 'Unknown'}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: ${Math.round((app.match_score || 0) * 100)}%"></div>
+                                    </div>
+                                    <span class="small">${Math.round((app.match_score || 0) * 100)}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm w-auto" 
+                                        onchange="updateApplicationStatus(${app.id}, this.value)">
+                                    <option value="pending" ${app.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="reviewing" ${app.status === 'reviewing' ? 'selected' : ''}>Reviewing</option>
+                                    <option value="interview" ${app.status === 'interview' ? 'selected' : ''}>Interview</option>
+                                    <option value="hired" ${app.status === 'hired' ? 'selected' : ''}>Hired</option>
+                                    <option value="rejected" ${app.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                                </select>
+                            </td>
+                            <td>${formatDate(app.created_at)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="viewResume(${app.resume?.id || 0})">
+                                    <i class="fas fa-file-alt"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="scheduleInterview(${app.id})">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = table;
+    
+    // Add pagination
+    const paginationContainer = document.getElementById('applicationsPagination');
+    if (pagination && pagination.pages > 1) {
+        paginationContainer.innerHTML = `
+            <nav>
+                <ul class="pagination justify-content-center">
+                    <li class="page-item ${!pagination.has_prev ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadApplications(${pagination.page - 1}); return false;">Previous</a>
+                    </li>
+                    ${Array.from({length: pagination.pages}, (_, i) => i + 1).map(p => `
+                        <li class="page-item ${p === pagination.page ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadApplications(${p}); return false;">${p}</a>
+                        </li>
+                    `).join('')}
+                    <li class="page-item ${!pagination.has_next ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadApplications(${pagination.page + 1}); return false;">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        `;
+    } else {
+        paginationContainer.innerHTML = '';
+    }
+}
+
+async function updateApplicationStatus(applicationId, status) {
+    try {
+        const response = await fetch(`/api/jobs/applications/${applicationId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        if (response.ok) {
+            showAlert('Application status updated', 'success');
+            loadDashboardData();
+            loadApplications();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Error updating application status', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating status:', error);
+        showAlert('Error updating application status', 'danger');
+    }
+}
+
+function viewResume(resumeId) {
+    if (!resumeId) {
+        showAlert('Resume not available', 'warning');
+        return;
+    }
+    downloadResume(resumeId);
+}
+
+function scheduleInterview(applicationId) {
+    // Set the application ID in the form
+    document.getElementById('interviewApplicationId').value = applicationId;
+    
+    // Load application details to populate form
+    loadApplicationForInterview(applicationId);
+}
+
+async function loadApplicationForInterview(applicationId) {
+    try {
+        const response = await fetch(`/api/jobs/application/${applicationId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                // Pre-fill some interview details based on application
+                const app = data.application;
+                document.getElementById('interviewTitle').value = `Interview for ${app.job_title}`;
+                
+                // Populate candidate and position info
+                document.getElementById('candidateInfo').innerHTML = `
+                    <div class="fw-bold">${app.candidate_name || 'N/A'}</div>
+                    <small class="text-muted">${app.candidate_email || ''}</small>
+                `;
+                
+                document.getElementById('positionInfo').innerHTML = `
+                    <div class="fw-bold">${app.job_title || 'N/A'}</div>
+                    <small class="text-muted">${app.company || ''}</small>
+                `;
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('scheduleInterviewModal'));
+                modal.show();
+            } else {
+                throw new Error(data.message || 'Failed to load application');
+            }
+        } else {
+            throw new Error('Failed to load application');
+        }
+    } catch (error) {
+        console.error('Error loading application:', error);
+        showAlert('Error loading application details', 'danger');
+        
+        // Still show the modal even if we can't load details
+        const modal = new bootstrap.Modal(document.getElementById('scheduleInterviewModal'));
+        modal.show();
+    }
+}
+
+// HR Job Management functions
+async function loadHRJobs(page = 1) {
+    const status = document.getElementById('hrJobStatusFilter').value;
+    const category = document.getElementById('hrJobCategoryFilter').value;
+    const dateRange = document.getElementById('hrJobDateFilter').value;
+    const search = document.getElementById('hrJobSearch').value;
+    
+    try {
+        const queryParams = new URLSearchParams({
+            page,
+            per_page: 10
+        });
+        
+        if (status && status !== 'all') queryParams.append('status', status);
+        if (category) queryParams.append('category', category);
+        if (dateRange && dateRange !== 'all') queryParams.append('date_range', dateRange);
+        if (search) queryParams.append('search', search);
+        
+        const response = await fetch(`/api/jobs/hr?${queryParams}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                displayHRJobs(data.jobs, data.pagination);
+                
+                // Update category filter options if available
+                if (data.filters && data.filters.categories && data.filters.categories.length > 0) {
+                    const categoryFilter = document.getElementById('hrJobCategoryFilter');
+                    categoryFilter.innerHTML = '<option value="">All Categories</option>' + 
+                        data.filters.categories.map(cat => 
+                            `<option value="${cat}" ${category === cat ? 'selected' : ''}>${cat}</option>`
+                        ).join('');
+                }
+            } else {
+                throw new Error(data.message || 'Failed to load job data');
+            }
+        } else {
+            document.getElementById('hrJobsTable').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4">
+                        <div class="alert alert-danger mb-0">
+                            Error loading jobs
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading HR jobs:', error);
+        document.getElementById('hrJobsTable').innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="alert alert-danger mb-0">
+                        Error loading jobs: ${error.message}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function displayHRJobs(jobs, pagination) {
+    const container = document.getElementById('hrJobsTable');
+    
+    if (!jobs || jobs.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="alert alert-info mb-0">
+                        No jobs found
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    container.innerHTML = jobs.map(job => {
+        // Calculate application count
+        const appCount = job.stats?.total_applications || 0;
+        
+        // Determine status
+        const isActive = job.is_active;
+        
+        // Format last activity time
+        const lastActivity = job.last_activity || job.updated_at || job.created_at;
+        
+        return `
+        <tr>
+            <td>
+                <input type="checkbox" class="form-check-input job-checkbox" value="${job.id}">
+            </td>
+            <td>${job.title}</td>
+            <td>
+                <span class="badge ${isActive ? 'bg-success' : 'bg-secondary'}">
+                    ${isActive ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                ${appCount > 0 ? 
+                    `<span class="badge bg-info">${appCount}</span>` : 
+                    '<span class="text-muted">No applications</span>'}
+            </td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>${formatDate(lastActivity)}</td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editJob(${job.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-${isActive ? 'warning' : 'success'}" 
+                            onclick="toggleJobStatus(${job.id}, ${!isActive})">
+                        <i class="fas fa-${isActive ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteJob(${job.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `}).join('');
+    
+    // Update pagination
+    updateJobsPagination(pagination);
+}
+
+function updateJobsPagination(pagination) {
+    const container = document.getElementById('hrJobsPagination');
+    
+    if (!pagination || !pagination.pages || pagination.pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadHRJobs(${pagination.page - 1}); return false;">Previous</a>
+        </li>
+        ${Array.from({ length: pagination.pages }, (_, i) => i + 1).map(p => `
+            <li class="page-item ${p === pagination.page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadHRJobs(${p}); return false;">${p}</a>
+            </li>
+        `).join('')}
+        <li class="page-item ${pagination.page === pagination.pages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadHRJobs(${pagination.page + 1}); return false;">Next</a>
+        </li>
+    `;
+}
+
+async function toggleJobStatus(jobId, activate) {
+    try {
+        const response = await fetch(`/api/jobs/${jobId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({ is_active: activate })
+        });
+        
+        if (response.ok) {
+            showAlert(`Job ${activate ? 'activated' : 'deactivated'} successfully`, 'success');
+            loadHRJobs();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || `Error ${activate ? 'activating' : 'deactivating'} job`, 'danger');
+        }
+    } catch (error) {
+        console.error('Error toggling job status:', error);
+        showAlert(`Error ${activate ? 'activating' : 'deactivating'} job`, 'danger');
+    }
+}
+
+async function bulkJobStatusChange(active) {
+    const selectedIds = Array.from(document.querySelectorAll('#hrJobsTable input.job-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedIds.length === 0) {
+        return showAlert('No jobs selected', 'warning');
+    }
+    
+    const confirmAction = active ? 'activate' : 'deactivate';
+    
+    if (!confirm(`Are you sure you want to ${confirmAction} the selected jobs?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/jobs/hr/bulk-action', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({ 
+                job_ids: selectedIds, 
+                action: active ? 'activate' : 'deactivate'
+            })
+        });
+        
+        if (response.ok) {
+            showAlert(`Jobs ${confirmAction}d successfully`, 'success');
+            loadHRJobs();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || `Error ${confirmAction}ing jobs`, 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating job status:', error);
+        showAlert(`Error ${confirmAction}ing jobs`, 'danger');
+    }
+}
+
+async function bulkCategoryChange() {
+    const selectedIds = Array.from(document.querySelectorAll('#hrJobsTable input.job-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedIds.length === 0) {
+        return showAlert('No jobs selected', 'warning');
+    }
+    
+    const newCategory = prompt('Enter new category for selected jobs:');
+    if (!newCategory) return;
+    
+    try {
+        const response = await fetch('/api/jobs/hr/bulk-action', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({ 
+                job_ids: selectedIds, 
+                action: 'change_category',
+                category: newCategory
+            })
+        });
+        
+        if (response.ok) {
+            showAlert('Job categories updated successfully', 'success');
+            loadHRJobs();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Error updating job categories', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating job categories:', error);
+        showAlert('Error updating job categories', 'danger');
+    }
+}
+
+function editJob(jobId) {
+    // Redirect to edit page or show edit modal
+    window.location.href = `/jobs/${jobId}/edit`;
+}
+
+function confirmDeleteJob(jobId) {
+    if (confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+        deleteJob(jobId);
+    }
+}
+
+async function deleteJob(jobId) {
+    try {
+        const response = await fetch(`/api/jobs/${jobId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            showAlert('Job deleted successfully', 'success');
+            loadHRJobs();
+            loadDashboardData();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Error deleting job', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting job:', error);
+        showAlert('Error deleting job', 'danger');
+    }
+}
+
+async function loadJobMetrics() {
+    const timeRange = document.getElementById('metricsTimeRange').value;
+    
+    try {
+        const response = await fetch(`/api/jobs/hr/metrics?time_range=${timeRange}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateJobMetricsCharts(data);
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Error loading job metrics', 'warning');
+            
+            // Clear charts
+            document.getElementById('jobMetricsContainer').innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-chart-bar text-muted fa-3x mb-3"></i>
+                    <h5>No metrics data available</h5>
+                    <p class="text-muted">Try changing the time range or adding more jobs</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading job metrics:', error);
+        showAlert('Error loading job metrics', 'danger');
+    }
+}
+
+function updateJobMetricsCharts(data) {
+    // Clear existing charts first
+    const timeChartCtx = document.getElementById('applicationsTimeChart');
+    const statusChartCtx = document.getElementById('statusBreakdownChart');
+    
+    if (!data) {
+        showAlert('No metrics data received from server', 'warning');
+        return;
+    }
+    
+    // Applications over time chart
+    if (timeChartCtx) {
+        const ctx = timeChartCtx.getContext('2d');
+        
+        // Check if chart instance exists and destroy if it does
+        if (window.appTimeChart) {
+            window.appTimeChart.destroy();
+        }
+        
+        if (data.applications_over_time && data.applications_over_time.length > 0) {
+            const timeData = data.applications_over_time;
+            window.appTimeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeData.map(item => formatDate(item.date)),
+                    datasets: [{
+                        label: 'Applications',
+                        data: timeData.map(item => item.count),
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Status breakdown chart
+    if (statusChartCtx) {
+        const ctx = statusChartCtx.getContext('2d');
+        
+        // Check if chart instance exists and destroy if it does
+        if (window.statusChart) {
+            window.statusChart.destroy();
+        }
+        
+        if (data.status_breakdown && Object.keys(data.status_breakdown).length > 0) {
+            const labels = Object.keys(data.status_breakdown);
+            const counts = Object.values(data.status_breakdown);
+            
+            window.statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: [
+                            '#28a745', // success
+                            '#17a2b8', // info
+                            '#ffc107', // warning
+                            '#dc3545', // danger
+                            '#6c757d'  // secondary
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Update category performance table
+    const categoryTableBody = document.getElementById('categoryPerformanceTable');
+    if (categoryTableBody && data.category_performance) {
+        categoryTableBody.innerHTML = '';
+        
+        data.category_performance.forEach(category => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${category.name}</td>
+                <td>${category.jobs}</td>
+                <td>${category.applications}</td>
+                <td>${category.average_per_job?.toFixed(1) || '0.0'}</td>
+            `;
+            categoryTableBody.appendChild(row);
+        });
+    }
+    
+    // Update top jobs table
+    const topJobsTableBody = document.getElementById('topJobsTable');
+    if (topJobsTableBody && data.top_jobs) {
+        topJobsTableBody.innerHTML = '';
+        
+        data.top_jobs.forEach(job => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${job.title}</td>
+                <td>${job.applications}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewJob(${job.id})">
+                        View
+                    </button>
+                </td>
+            `;
+            topJobsTableBody.appendChild(row);
+        });
+    }
+}
+
+function viewJob(jobId) {
+    window.location.href = `/jobs/${jobId}`;
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+async function submitInterviewSchedule() {
+    const form = document.getElementById('scheduleInterviewForm');
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+
+    const formData = new FormData(form);
+    const interviewData = Object.fromEntries(formData.entries());
+    
+    // Convert duration to number
+    if (interviewData.duration_minutes) {
+        interviewData.duration_minutes = Number(interviewData.duration_minutes);
+    }
+    
+    // Combine date and time into a single datetime
+    if (interviewData.interview_date && interviewData.interview_time) {
+        const dateTime = `${interviewData.interview_date}T${interviewData.interview_time}`;
+        interviewData.scheduled_at = new Date(dateTime).toISOString();
+        delete interviewData.interview_date;
+        delete interviewData.interview_time;
+    }
+    
+    try {
+        const response = await fetch('/api/interviews/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify(interviewData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showAlert('Interview scheduled successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('scheduleInterviewModal')).hide();
+            form.reset();
+            form.classList.remove('was-validated');
+            
+            // Refresh applications to show updated status
+            loadApplications();
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Error scheduling interview', 'danger');
+        }
+    } catch (error) {
+        console.error('Error scheduling interview:', error);
+        showAlert('Error scheduling interview', 'danger');
+    }
+}
+
+// Interview Management Functions
+async function loadInterviews() {
+    try {
+        const statusFilter = document.getElementById('interviewStatusFilter')?.value || '';
+        const typeFilter = document.getElementById('interviewTypeFilter')?.value || '';
+        const dateFrom = document.getElementById('interviewDateFrom')?.value || '';
+        const dateTo = document.getElementById('interviewDateTo')?.value || '';
+        
+        const queryParams = new URLSearchParams({
+            page: 1,
+            per_page: 50
+        });
+        
+        if (statusFilter) queryParams.append('status', statusFilter);
+        if (typeFilter) queryParams.append('type', typeFilter);
+        if (dateFrom) queryParams.append('date_from', dateFrom);
+        if (dateTo) queryParams.append('date_to', dateTo);
+        
+        const response = await fetch(`/api/interviews/?${queryParams}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                displayInterviews(data.interviews);
+            } else {
+                throw new Error(data.message || 'Failed to load interviews');
+            }
+        } else {
+            throw new Error('Failed to load interviews');
+        }
+    } catch (error) {
+        console.error('Error loading interviews:', error);
+        showAlert('Error loading interviews: ' + error.message, 'danger');
+    }
+}
+
+function displayInterviews(interviews) {
+    const tableBody = document.getElementById('interviewsTableBody');
+    if (!tableBody) return;
+    
+    if (!interviews || interviews.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="text-muted">No interviews found</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tableBody.innerHTML = interviews.map(interview => `
+        <tr>
+            <td>
+                <div class="fw-bold">${interview.application?.candidate_name || 'N/A'}</div>
+                <small class="text-muted">${interview.application?.job_title || 'N/A'}</small>
+            </td>
+            <td>
+                <span class="badge bg-${getInterviewTypeBadgeColor(interview.interview_type)}">
+                    ${interview.interview_type}
+                </span>
+            </td>
+            <td>${interview.title}</td>
+            <td>
+                <div>${formatDate(interview.scheduled_at)}</div>
+                <small class="text-muted">${formatTime(interview.scheduled_at)}</small>
+            </td>
+            <td>${interview.duration_minutes} min</td>
+            <td>
+                <span class="badge bg-${getInterviewStatusBadgeColor(interview.status)}">
+                    ${interview.status}
+                </span>
+            </td>
+            <td>${interview.location || 'N/A'}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="viewInterview(${interview.id})" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${interview.status === 'scheduled' ? `
+                        <button class="btn btn-outline-warning" onclick="editInterview(${interview.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="cancelInterview(${interview.id})" title="Cancel">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getInterviewTypeBadgeColor(type) {
+    switch (type) {
+        case 'phone': return 'primary';
+        case 'video': return 'info';
+        case 'technical': return 'warning';
+        case 'hr': return 'success';
+        case 'final': return 'danger';
+        default: return 'secondary';
+    }
+}
+
+function getInterviewStatusBadgeColor(status) {
+    switch (status) {
+        case 'scheduled': return 'primary';
+        case 'completed': return 'success';
+        case 'cancelled': return 'danger';
+        case 'rescheduled': return 'warning';
+        default: return 'secondary';
+    }
+}
+
+function formatTime(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+async function viewInterview(interviewId) {
+    try {
+        const response = await fetch(`/api/interviews/${interviewId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                showInterviewDetails(data.interview);
+            } else {
+                throw new Error(data.message || 'Failed to load interview');
+            }
+        } else {
+            throw new Error('Failed to load interview');
+        }
+    } catch (error) {
+        console.error('Error loading interview:', error);
+        showAlert('Error loading interview details: ' + error.message, 'danger');
+    }
+}
+
+function showInterviewDetails(interview) {
+    const detailsHtml = `
+        <div class="interview-details">
+            <h6>Interview Information</h6>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Candidate:</strong> ${interview.application?.candidate_name || 'N/A'}<br>
+                    <strong>Position:</strong> ${interview.application?.job_title || 'N/A'}<br>
+                    <strong>Type:</strong> <span class="badge bg-${getInterviewTypeBadgeColor(interview.interview_type)}">${interview.interview_type}</span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Date & Time:</strong> ${formatDate(interview.scheduled_at)} at ${formatTime(interview.scheduled_at)}<br>
+                    <strong>Duration:</strong> ${interview.duration_minutes} minutes<br>
+                    <strong>Status:</strong> <span class="badge bg-${getInterviewStatusBadgeColor(interview.status)}">${interview.status}</span>
+                </div>
+            </div>
+            <div class="mb-3">
+                <strong>Title:</strong> ${interview.title}<br>
+                <strong>Description:</strong> ${interview.description || 'No description provided'}
+            </div>
+            ${interview.location ? `<div class="mb-3"><strong>Location:</strong> ${interview.location}</div>` : ''}
+            ${interview.meeting_link ? `<div class="mb-3"><strong>Meeting Link:</strong> <a href="${interview.meeting_link}" target="_blank">${interview.meeting_link}</a></div>` : ''}
+            ${interview.feedback ? `<div class="mb-3"><strong>Feedback:</strong> ${interview.feedback}</div>` : ''}
+        </div>
+    `;
+    
+    // Create a simple modal to show details
+    const modalHtml = `
+        <div class="modal fade" id="interviewDetailsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Interview Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${detailsHtml}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('interviewDetailsModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add new modal
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('interviewDetailsModal'));
+    modal.show();
+}
+
+async function cancelInterview(interviewId) {
+    if (!confirm('Are you sure you want to cancel this interview?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/interviews/${interviewId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({ status: 'cancelled' })
+        });
+        
+        if (response.ok) {
+            showAlert('Interview cancelled successfully', 'success');
+            loadInterviews(); // Refresh the list
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Error cancelling interview', 'danger');
+        }
+    } catch (error) {
+        console.error('Error cancelling interview:', error);
+        showAlert('Error cancelling interview', 'danger');
+    }
+}
+
+function editInterview(interviewId) {
+    // For now, just show a message that edit functionality is coming soon
+    showAlert('Interview editing functionality coming soon!', 'info');
+}
+
+function openInterviewManagement() {
+    const modal = new bootstrap.Modal(document.getElementById('interviewManagementModal'));
+    modal.show();
+    loadInterviews();
+}
+</script>
+{% endblock %}

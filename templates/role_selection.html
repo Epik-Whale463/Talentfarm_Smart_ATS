@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Choose Your Role - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold mb-2">Welcome to AI-ATS</h2>
+                        <p class="text-muted">Choose your role to continue</p>
+                        
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <img src="" id="userAvatar" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" alt="Profile">
+                            <div class="ms-3 text-start">
+                                <h5 id="userName" class="mb-0 fw-bold"></h5>
+                                <p id="userEmail" class="text-muted mb-0 small"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card role-card h-100 border-0" id="candidateCard" onclick="selectRole('candidate')">
+                                <div class="card-body text-center p-4">
+                                    <div class="icon-circle bg-primary text-white mb-3">
+                                        <i class="fas fa-user-tie fa-2x"></i>
+                                    </div>
+                                    <h4 class="fw-bold">Job Seeker</h4>
+                                    <p class="text-muted">Looking for job opportunities and want to submit your resume</p>
+                                    <ul class="text-start small">
+                                        <li>Upload and manage your resume</li>
+                                        <li>Apply for open positions</li>
+                                        <li>Track application status</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card role-card h-100 border-0" id="hrCard" onclick="selectRole('hr')">
+                                <div class="card-body text-center p-4">
+                                    <div class="icon-circle bg-success text-white mb-3">
+                                        <i class="fas fa-briefcase fa-2x"></i>
+                                    </div>
+                                    <h4 class="fw-bold">Recruiter</h4>
+                                    <p class="text-muted">Looking to hire talent and manage recruitment process</p>
+                                    <ul class="text-start small">
+                                        <li>Post and manage job listings</li>
+                                        <li>Review candidate applications</li>
+                                        <li>Use AI to match candidates to jobs</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="roleForm" class="mt-4 text-center">
+                        <input type="hidden" id="selectedRole" name="role" value="">
+                        <input type="hidden" id="userId" name="user_id" value="">
+                        <button type="submit" class="btn btn-primary px-5" id="continueBtn" disabled>Continue</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // If user already has a role, redirect to dashboard
+    if (user.id && user.role && (user.role === 'candidate' || user.role === 'hr')) {
+        window.location.href = '/dashboard';
+        return;
+    }
+    
+    // If no user is logged in, redirect to login
+    if (!user.id) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Display user info
+    document.getElementById('userName').textContent = user.name || '';
+    document.getElementById('userEmail').textContent = user.email || '';
+    document.getElementById('userAvatar').src = user.github_avatar || 'https://github.com/identicons/app/icon_logger.png';
+    document.getElementById('userId').value = user.id || '';
+    
+    // Role selection
+    const roleCards = document.querySelectorAll('.role-card');
+    roleCards.forEach(card => {
+        card.addEventListener('click', function() {
+            roleCards.forEach(c => c.classList.remove('border-primary', 'shadow'));
+            this.classList.add('border-primary', 'shadow');
+        });
+    });
+    
+    // Form submission
+    document.getElementById('roleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const role = document.getElementById('selectedRole').value;
+        const userId = document.getElementById('userId').value;
+        
+        if (!role || !userId) {
+            showAlert('Please select a role to continue', 'danger');
+            return;
+        }
+        
+        // Send role update request
+        fetch('/api/auth/update-role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ role, user_id: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+                return;
+            }
+            
+            // Update local storage and redirect
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.role = role;
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            window.location.href = '/dashboard';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('An error occurred. Please try again.', 'danger');
+        });
+    });
+});
+
+function selectRole(role) {
+    document.getElementById('selectedRole').value = role;
+    document.getElementById('continueBtn').disabled = false;
+    
+    // Update UI to show selected role
+    if (role === 'candidate') {
+        document.getElementById('candidateCard').classList.add('border-primary', 'shadow');
+        document.getElementById('hrCard').classList.remove('border-primary', 'shadow');
+    } else {
+        document.getElementById('hrCard').classList.add('border-primary', 'shadow');
+        document.getElementById('candidateCard').classList.remove('border-primary', 'shadow');
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    const alertContainer = document.getElementById('alertContainer');
+    alertContainer.innerHTML = '';
+    alertContainer.appendChild(alertDiv);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 300);
+    }, 5000);
+}
+</script>
+
+<style>
+.icon-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.role-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.role-card:hover {
+    transform: translateY(-5px);
+}
+</style>
+{% endblock %}

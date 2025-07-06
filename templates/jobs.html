@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}Jobs - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-briefcase me-2"></i>Job Listings</h2>
+    <div class="d-flex gap-2">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search jobs..." style="width: 300px;">
+        <button class="btn btn-outline-primary" onclick="loadJobs()">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <select id="locationFilter" class="form-select">
+                    <option value="">All Locations</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="typeFilter" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="number" id="minSalary" class="form-control" placeholder="Min Salary">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                    <i class="fas fa-filter me-2"></i>Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Jobs List -->
+<div class="row" id="jobsList">
+    <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading jobs...</p>
+    </div>
+</div>
+
+<!-- Job Detail Modal -->
+<div class="modal fade" id="jobDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobDetailContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="applyJobBtn" style="display: none;">
+                    <i class="fas fa-paper-plane me-2"></i>Apply Now
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply Modal -->
+<div class="modal fade" id="applyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply for Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="applyForm">
+                    <div class="mb-3">
+                        <label for="resumeSelect" class="form-label">Select Resume</label>
+                        <select class="form-select" id="resumeSelect" required>
+                            <option value="">Choose a resume...</option>
+                        </select>
+                        <div class="form-text">You can upload new resumes in the Resume Management section</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="coverLetter" class="form-label">Cover Letter (Optional)</label>
+                        <textarea class="form-control" id="coverLetter" rows="5" 
+                                placeholder="Write a brief cover letter..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitApplicationBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Application
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allJobs = []; 
+let currentJobId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    setupSearchFilter();
+    // Load jobs from the API when the page loads
+    loadJobs();
+});
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+function setupEventListeners() {
+    document.getElementById('applyJobBtn').addEventListener('click', showApplyModal);
+    document.getElementById('submitApplicationBtn').addEventListener('click', submitApplication);
+}
+
+function setupSearchFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const debouncedSearch = debounce(filterJobs, 300);
+    searchInput.addEventListener('input', debouncedSearch);
+}
+
+function applyFilters() {
+    loadJobs();
+}
+
+function filterJobs() {
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    if (!searchQuery) {
+        loadJobs(); // Reload all jobs if search is cleared
+        return;
+    }
+    
+    // Otherwise filter the existing jobs
+    const filteredJobs = allJobs.filter(job => 
+        job.title?.toLowerCase().includes(searchQuery) || 
+        job.company?.toLowerCase().includes(searchQuery) ||
+        job.description?.toLowerCase().includes(searchQuery)
+    );
+    
+    // Use the displayJobs function from main.js (already loaded)
+    if (typeof window.displayJobs === 'function') {
+        window.displayJobs(filteredJobs);
+    } else {
+        console.error('displayJobs function not found in global scope');
+    }
+}
+
+async function viewJobDetails(jobId) {
+    try {
+        const response = await fetch(`/api/jobs/${jobId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.job) {
+                currentJobId = jobId;
+                displayJobDetails(data.job);
+                const modal = new bootstrap.Modal(document.getElementById('jobDetailModal'));
+                modal.show();
+            } else {
+                throw new Error(data.message || 'Failed to load job details');
+            }
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to load job details');
+        }
+    } catch (error) {
+        console.error("Error fetching job details:", error);
+        showToast('Error: ' + error.message, 'danger');
+    }
+}
+
+function displayJobDetails(job) {
+    const container = document.getElementById('jobDetailContent');
+    const applyButton = document.getElementById('applyJobBtn');
+    
+    // Format job details
+    const requirements = job.requirements || [];
+    const reqList = Array.isArray(requirements) ? requirements : requirements.split('\n').filter(r => r.trim());
+    
+    const qualifications = job.qualifications || [];
+    const qualList = Array.isArray(qualifications) ? qualifications : qualifications.split('\n').filter(q => q.trim());
+    
+    // Build the HTML
+    container.innerHTML = `
+        <div class="mb-4">
+            <div class="d-flex justify-content-between">
+                <h3>${job.title || 'Untitled Job'}</h3>
+                <span class="badge bg-${job.is_active ? 'success' : 'danger'} fs-6">
+                    ${job.is_active ? 'Active' : 'Inactive'}
+                </span>
+            </div>
+            <div class="mb-3">
+                <span class="badge bg-primary me-2">${job.employment_type || 'Full-time'}</span>
+                <span class="badge bg-secondary me-2">${job.category || 'General'}</span>
+                ${job.remote ? '<span class="badge bg-info">Remote</span>' : ''}
+            </div>
+            <p class="text-muted">
+                <i class="fas fa-building me-2"></i>${job.company || 'Company not specified'} | 
+                <i class="fas fa-map-marker-alt me-2"></i>${job.location || 'Location not specified'} | 
+                <i class="fas fa-calendar me-2"></i>Posted: ${formatDate(job.created_at)}
+            </p>
+            <p class="text-success fw-bold">
+                <i class="fas fa-dollar-sign me-2"></i>${formatSalary(job.salary_min, job.salary_max)}
+            </p>
+        </div>
+        
+        <div class="mb-4">
+            <h5>Job Description</h5>
+            <p>${job.description || 'No description provided.'}</p>
+        </div>
+        
+        ${reqList.length > 0 ? `
+            <div class="mb-4">
+                <h5>Requirements</h5>
+                <ul class="fa-ul">
+                    ${reqList.map(req => `
+                        <li><span class="fa-li"><i class="fas fa-check-circle text-success"></i></span>${req}</li>
+                    `).join('')}
+                </ul>
+            </div>
+        ` : ''}
+        
+        ${qualList.length > 0 ? `
+            <div class="mb-4">
+                <h5>Qualifications</h5>
+                <ul class="fa-ul">
+                    ${qualList.map(qual => `
+                        <li><span class="fa-li"><i class="fas fa-graduation-cap text-primary"></i></span>${qual}</li>
+                    `).join('')}
+                </ul>
+            </div>
+        ` : ''}
+        
+        <div class="mb-3">
+            <h5>Additional Information</h5>
+            <p class="mb-1"><strong>Working Hours:</strong> ${job.working_hours || 'Not specified'}</p>
+            <p class="mb-1"><strong>Benefits:</strong> ${job.benefits || 'Not specified'}</p>
+            <p class="mb-1"><strong>Contact:</strong> ${job.contact || 'Not specified'}</p>
+        </div>
+    `;
+    
+    // Show apply button if job is active
+    applyButton.style.display = job.is_active ? 'block' : 'none';
+}
+
+async function quickApply(jobId) {
+    currentJobId = jobId;
+    showApplyModal();
+}
+
+function showApplyModal() {
+    loadResumesForApplication();
+    const modal = new bootstrap.Modal(document.getElementById('applyModal'));
+    modal.show();
+}
+
+async function loadResumesForApplication() {
+    try {
+        const response = await fetch('/api/resumes/', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const selectElem = document.getElementById('resumeSelect');
+            
+            // Clear previous options
+            selectElem.innerHTML = '<option value="">Choose a resume...</option>';
+            
+            if (data.resumes && data.resumes.length > 0) {
+                data.resumes.forEach(resume => {
+                    const option = document.createElement('option');
+                    option.value = resume.id;
+                    option.textContent = resume.filename;
+                    selectElem.appendChild(option);
+                });
+            } else {
+                selectElem.innerHTML += '<option value="" disabled>No resumes available. Please upload one.</option>';
+            }
+        } else {
+            throw new Error('Failed to load resumes');
+        }
+    } catch (error) {
+        console.error('Error loading resumes:', error);
+        showToast('Error loading your resumes. Please check your connection.', 'danger');
+    }
+}
+
+async function submitApplication() {
+    if (!currentJobId) {
+        showToast('No job selected for application', 'danger');
+        return;
+    }
+    
+    const resumeId = document.getElementById('resumeSelect').value;
+    const coverLetter = document.getElementById('coverLetter').value;
+    
+    if (!resumeId) {
+        showToast('Please select a resume', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/jobs/${currentJobId}/apply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify({
+                resume_id: resumeId,
+                cover_letter: coverLetter
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                // Hide modals
+                document.querySelectorAll('.modal').forEach(modalEl => {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                });
+                
+                // Show success message
+                showToast('Application submitted successfully!', 'success');
+                
+                // Reset form
+                document.getElementById('coverLetter').value = '';
+                document.getElementById('resumeSelect').selectedIndex = 0;
+            } else {
+                throw new Error(data.message || 'Application submission failed');
+            }
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Application submission failed');
+        }
+    } catch (error) {
+        console.error('Error submitting application:', error);
+        showToast('Error: ' + error.message, 'danger');
+    }
+}
+
+function showToast(message, type = 'info', duration = 5000) {
+    // Create toast container if it doesn't exist
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = createToastContainer();
+    }
+    
+    // Create unique ID for the toast
+    const toastId = 'toast-' + Date.now();
+    
+    // Create toast element
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+    toastEl.id = toastId;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    
+    toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-${getToastIcon(type)} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Add to container
+    container.appendChild(toastEl);
+    
+    // Initialize and show the toast
+    const toast = new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: duration
+    });
+    toast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toastEl.addEventListener('hidden.bs.toast', function() {
+        toastEl.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '1060';
+    document.body.appendChild(container);
+    return container;
+}
+
+function getToastIcon(type) {
+    switch (type) {
+        case 'success': return 'check-circle';
+        case 'danger': return 'exclamation-circle';
+        case 'warning': return 'exclamation-triangle';
+        default: return 'info-circle';
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatSalary(min, max) {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+    if (min) return `From $${min.toLocaleString()}`;
+    return `Up to $${max.toLocaleString()}`;
+}
+
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+function formatJobType(type) {
+    if (!type) return 'Other';
+    return type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, ' ');
+}
+
+// Debounce function for search input
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+</script>
+{% endblock %}

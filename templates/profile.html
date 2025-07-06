@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-user me-2"></i>User Profile</h4>
+            </div>
+            <div class="card-body">
+                <form id="profileForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="profileName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="profileName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="profileEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="profileEmail" required readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="profileRole" class="form-label">Role</label>
+                            <input type="text" class="form-control" id="profileRole" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="profileJoined" class="form-label">Member Since</label>
+                            <input type="text" class="form-control" id="profileJoined" readonly>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5 class="mb-3">Change Password</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="currentPassword">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="newPassword">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update Profile
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="loadProfile()">
+                            <i class="fas fa-sync me-2"></i>Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Account Statistics -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Account Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center" id="accountStats">
+                    <div class="col-md-3 mb-3">
+                        <div class="statistic">
+                            <h4 class="text-primary" id="statsResumes">0</h4>
+                            <p>Resumes</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="statistic">
+                            <h4 class="text-success" id="statsApplications">0</h4>
+                            <p>Applications</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="statistic">
+                            <h4 class="text-info" id="statsJobs">0</h4>
+                            <p>Jobs Created</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="statistic">
+                            <h4 class="text-warning" id="statsLogins">-</h4>
+                            <p>Last Login</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Danger Zone -->
+        <div class="card mt-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>Delete Account</h5>
+                        <p class="text-muted mb-0">Permanently delete your account and all associated data</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                        <i class="fas fa-trash me-2"></i>Delete Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteAccountModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Account
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone.
+                </div>
+                <p>Are you sure you want to permanently delete your account? This will remove:</p>
+                <ul>
+                    <li>All your personal information</li>
+                    <li>All your uploaded resumes</li>
+                    <li>All your job applications</li>
+                    <li>All your job listings (if you're a recruiter)</li>
+                </ul>
+                <p>Please type <strong>DELETE</strong> to confirm:</p>
+                <input type="text" class="form-control" id="deleteConfirmation" placeholder="Type DELETE to confirm">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton" disabled>
+                    <i class="fas fa-trash me-2"></i>Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadProfile();
+    loadAccountStats();
+    
+    document.getElementById('profileForm').addEventListener('submit', updateProfile);
+    
+    // Set up delete account confirmation
+    const deleteConfirmInput = document.getElementById('deleteConfirmation');
+    const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+    
+    deleteConfirmInput.addEventListener('input', function() {
+        confirmDeleteButton.disabled = this.value !== 'DELETE';
+    });
+    
+    confirmDeleteButton.addEventListener('click', deleteAccount);
+});
+
+function loadProfile() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    document.getElementById('profileName').value = user.name || '';
+    document.getElementById('profileEmail').value = user.email || '';
+    document.getElementById('profileRole').value = user.role === 'hr' ? 'HR / Recruiter' : 'Candidate';
+    document.getElementById('profileJoined').value = user.created_at ? 
+        new Date(user.created_at).toLocaleDateString() : 'Unknown';
+    
+    // Clear password fields
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+}
+
+async function updateProfile(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('profileName').value;
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    
+    // Basic validation
+    if (!name.trim()) {
+        showAlert('Name is required', 'warning');
+        return;
+    }
+    
+    if (newPassword && !currentPassword) {
+        showAlert('Current password is required to change password', 'warning');
+        return;
+    }
+    
+    if (newPassword && newPassword.length < 6) {
+        showAlert('New password must be at least 6 characters', 'warning');
+        return;
+    }
+    
+    const updateData = { name };
+    if (newPassword) {
+        updateData.current_password = currentPassword;
+        updateData.new_password = newPassword;
+    }
+    
+    const token = localStorage.getItem('token');
+    
+    try {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+        submitBtn.disabled = true;
+        
+        // Note: This endpoint would need to be implemented in the backend
+        const response = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('user', JSON.stringify(data.user));
+            showAlert('Profile updated successfully!', 'success');
+            loadProfile(); // Reload profile data
+        } else {
+            const errorData = await response.json();
+            showAlert(errorData.error || 'Failed to update profile', 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error. Please try again.', 'danger');
+    } finally {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Update Profile';
+        submitBtn.disabled = false;
+    }
+}
+
+async function loadAccountStats() {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    try {
+        // Load resumes count (for candidates)
+        if (user.role === 'candidate') {
+            const resumesResponse = await fetch('/api/resumes/list', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (resumesResponse.ok) {
+                const resumesData = await resumesResponse.json();
+                document.getElementById('statsResumes').textContent = resumesData.resumes.length;
+            }
+        } else {
+            // Hide resumes stat for HR users
+            document.getElementById('statsResumes').parentNode.style.display = 'none';
+        }
+        
+        // Load jobs count (for HR users)
+        if (user.role === 'hr') {
+            const jobsResponse = await fetch('/api/jobs', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (jobsResponse.ok) {
+                const jobsData = await jobsResponse.json();
+                const userJobs = jobsData.jobs.filter(job => job.created_by === user.id);
+                document.getElementById('statsJobs').textContent = userJobs.length;
+            }
+        } else {
+            // Hide jobs stat for candidates
+            document.getElementById('statsJobs').parentNode.style.display = 'none';
+        }
+        
+        // Set last login (placeholder - would need backend implementation)
+        document.getElementById('statsLogins').textContent = 'Today';
+        
+    } catch (error) {
+        console.error('Error loading account stats:', error);
+    }
+}
+
+async function deleteAccount() {
+    const token = localStorage.getItem('token');
+    
+    try {
+        // Disable button and show loading
+        const deleteBtn = document.getElementById('confirmDeleteButton');
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Deleting...';
+        deleteBtn.disabled = true;
+        
+        // Call the delete account API
+        const response = await fetch('/api/auth/delete-account', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            // Show success message
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal'));
+            modal.hide();
+            
+            showAlert('Your account has been successfully deleted', 'success');
+            
+            // Clear local storage and redirect to homepage after a short delay
+            setTimeout(() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }, 2000);
+        } else {
+            const errorData = await response.json();
+            showAlert(errorData.error || 'Failed to delete account', 'danger');
+            
+            // Reset button
+            deleteBtn.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Permanently';
+            deleteBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        showAlert('Network error. Please try again.', 'danger');
+        
+        // Reset button
+        const deleteBtn = document.getElementById('confirmDeleteButton');
+        deleteBtn.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Permanently';
+        deleteBtn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

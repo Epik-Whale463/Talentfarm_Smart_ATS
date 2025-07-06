@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Register - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<style>
+    .bento-container {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-auto-rows: minmax(100px, auto);
+        gap: 15px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .bento-item {
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: #fff;
+    }
+    
+    .bento-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    
+    .bento-hero {
+        grid-column: span 5;
+        grid-row: span 2;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .bento-auth {
+        grid-column: span 7;
+        grid-row: span 2;
+        background: #f8f9fa;
+        color: #343a40;
+        position: relative;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-left: 2px solid #dee2e6;
+    }
+    
+    .feature-item {
+        grid-column: span 4;
+        padding: 25px;
+        text-align: center;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .github-btn {
+        background-color: #f8f9fa;
+        color: #24292e;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 12px 20px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        margin-bottom: 20px;
+        max-width: 300px;
+    }
+    
+    .github-btn:hover {
+        background-color: #e9ecef;
+        transform: translateY(-2px);
+        color: #24292e;
+    }
+    
+    .hero-pattern {
+        position: absolute;
+        right: 20px;
+        bottom: 20px;
+        opacity: 0.1;
+        font-size: 100px;
+        color: #6c757d;
+    }
+    
+    .feature-icon {
+        font-size: 32px;
+        margin-bottom: 15px;
+        color: #6c757d;
+    }
+    
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+    
+    .step-number {
+        width: 32px;
+        height: 32px;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+    
+    @media (max-width: 992px) {
+        .bento-hero, .bento-auth {
+            grid-column: span 12;
+        }
+        .feature-item {
+            grid-column: span 6;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .feature-item {
+            grid-column: span 12;
+        }
+    }
+</style>
+
+<div class="bento-container">
+    <div class="bento-hero">
+        <div class="text-center mb-4">
+            <i class="fas fa-user-plus fa-3x text-secondary mb-3"></i>
+            <h2 id="roleTitle">Join ATS.ai</h2>
+            <p class="text-muted">Create an account to get started</p>
+        </div>
+        
+        <div class="d-flex justify-content-center">
+            <a href="{{ url_for('auth.github_login') }}" class="github-btn">
+                <i class="fab fa-github"></i>
+                Sign up with GitHub
+            </a>
+        </div>
+        
+        <div class="text-center mt-3">
+            <p class="small text-muted">
+                <i class="fas fa-shield-alt me-1"></i>
+                Your information is secure and we respect your privacy
+            </p>
+            <p class="mt-3">
+                Already have an account? 
+                <a href="{{ url_for('dashboard.login_page') }}">Sign in here</a>
+            </p>
+        </div>
+    </div>
+    
+    <div class="bento-auth">
+        <h3 class="mb-4">Get started in seconds</h3>
+        
+        <div class="step-item">
+            <div class="step-number">1</div>
+            <div>
+                <h5 class="mb-1">Connect with GitHub</h5>
+                <p class="mb-0">Click the button to authorize with your GitHub account</p>
+            </div>
+        </div>
+        
+        <div class="step-item">
+            <div class="step-number">2</div>
+            <div>
+                <h5 class="mb-1">Account Creation</h5>
+                <p class="mb-0">Your account is automatically created with your GitHub profile</p>
+            </div>
+        </div>
+        
+        <div class="step-item">
+            <div class="step-number">3</div>
+            <div>
+                <h5 class="mb-1">Start Using ATS.ai</h5>
+                <p class="mb-0">Immediately access all features of our AI-powered platform</p>
+            </div>
+        </div>
+        
+        <i class="fab fa-github hero-pattern"></i>
+    </div>
+    
+    <div class="feature-item bento-item">
+        <i class="fas fa-bolt feature-icon"></i>
+        <h5>Quick Onboarding</h5>
+        <p class="text-muted">Get started in seconds with GitHub authentication</p>
+    </div>
+    
+    <div class="feature-item bento-item">
+        <i class="fas fa-shield-alt feature-icon"></i>
+        <h5>Secure Authentication</h5>
+        <p class="text-muted">Your data is protected with industry-standard security</p>
+    </div>
+    
+    <div class="feature-item bento-item">
+        <i class="fas fa-magic feature-icon"></i>
+        <h5>AI-Powered Features</h5>
+        <p class="text-muted">Access advanced AI tools for your recruitment needs</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for preferred role from localStorage or URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRole = urlParams.get('role');
+    const storedRole = localStorage.getItem('preferredRole');
+    const preferredRole = urlRole || storedRole;
+    
+    // Store preferred role if provided
+    if (preferredRole && (preferredRole === 'candidate' || preferredRole === 'hr')) {
+        localStorage.setItem('preferredRole', preferredRole);
+        
+        // Update page content based on role
+        if (preferredRole === 'candidate') {
+            document.getElementById('roleTitle').textContent = 'Create Job Seeker Account';
+        } else {
+            document.getElementById('roleTitle').textContent = 'Create Employer Account';
+        }
+    }
+    
+    // Add preferred role to GitHub login link if available
+    const githubLoginBtn = document.querySelector('.github-btn');
+    if (githubLoginBtn && preferredRole) {
+        const currentHref = githubLoginBtn.getAttribute('href');
+        githubLoginBtn.setAttribute('href', `${currentHref}?preferred_role=${preferredRole}`);
+    }
+});
+</script>
+{% endblock %}

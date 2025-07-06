@@ -1,0 +1,2410 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Dashboard - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<style>
+.dashboard-bento {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(5, minmax(100px, auto));
+    gap: 12px;
+    margin-bottom: 2rem;
+}
+
+.bento-item {
+    border-radius: 12px;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    backdrop-filter: blur(10px);
+}
+
+.bento-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Grid Layout */
+.welcome-header {
+    grid-column: 1 / 7;
+    grid-row: 1 / 2;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    color: #333;
+    text-align: left;
+    align-items: flex-start;
+    justify-content: flex-start;
+    border-left: 3px solid #667eea;
+}
+
+.profile-stats {
+    grid-column: 7 / 13;
+    grid-row: 1 / 2;
+    background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+    color: #333;
+    border-left: 3px solid #f093fb;
+}
+
+.resume-stat {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+    background: linear-gradient(135deg, rgba(67, 233, 123, 0.1) 0%, rgba(56, 249, 215, 0.1) 100%);
+    color: #333;
+    border-left: 3px solid #43e97b;
+}
+
+.application-stat {
+    grid-column: 4 / 7;
+    grid-row: 2 / 3;
+    background: linear-gradient(135deg, rgba(250, 112, 154, 0.1) 0%, rgba(254, 225, 64, 0.1) 100%);
+    color: #333;
+    border-left: 3px solid #fa709a;
+}
+
+.job-stat {
+    grid-column: 7 / 10;
+    grid-row: 2 / 3;
+    background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+    color: #333;
+    border-left: 3px solid #4facfe;
+}
+
+.match-stat {
+    grid-column: 10 / 11;
+    grid-row: 2 / 3;
+    background: linear-gradient(135deg, rgba(255, 236, 210, 0.3) 0%, rgba(252, 182, 159, 0.3) 100%);
+    color: #333;
+    border-left: 3px solid #fcb69f;
+}
+
+.interview-stat {
+    grid-column: 11 / 13;
+    grid-row: 2 / 3;
+    background: linear-gradient(135deg, rgba(110, 193, 228, 0.2) 0%, rgba(254, 214, 227, 0.2) 100%);
+    color: #333;
+    border-left: 3px solid #6ec1e4;
+}
+
+.upload-action {
+    grid-column: 1 / 5;
+    grid-row: 3 / 4;
+    background: linear-gradient(135deg, rgba(168, 237, 234, 0.2) 0%, rgba(254, 214, 227, 0.2) 100%);
+    color: #333;
+    border-left: 3px solid #a8edea;
+}
+
+.browse-action {
+    grid-column: 5 / 9;
+    grid-row: 3 / 4;
+    background: linear-gradient(135deg, rgba(255, 154, 158, 0.15) 0%, rgba(254, 207, 239, 0.15) 100%);
+    color: #333;
+    border-left: 3px solid #ff9a9e;
+}
+
+.quick-apply {
+    grid-column: 9 / 13;
+    grid-row: 3 / 4;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    color: #333;
+    border-left: 3px solid #667eea;
+}
+
+.recent-resumes {
+    grid-column: 1 / 7;
+    grid-row: 4 / 6;
+    background: linear-gradient(135deg, rgba(250, 208, 196, 0.2) 0%, rgba(255, 209, 255, 0.2) 100%);
+    color: #333;
+    text-align: left;
+    align-items: flex-start;
+    border-left: 3px solid #fad0c4;
+}
+
+.recent-applications {
+    grid-column: 7 / 13;
+    grid-row: 4 / 6;
+    background: linear-gradient(135deg, rgba(161, 140, 209, 0.15) 0%, rgba(251, 194, 235, 0.15) 100%);
+    color: #333;
+    text-align: left;
+    align-items: flex-start;
+    border-left: 3px solid #a18cd1;
+}
+
+@media (max-width: 768px) {
+    .dashboard-bento {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 10px;
+    }
+    
+    .bento-item {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+        min-height: 100px;
+        text-align: center;
+        align-items: center;
+    }
+    
+    .welcome-header,
+    .recent-resumes,
+    .recent-applications {
+        text-align: center;
+        align-items: center;
+    }
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: #2d3748;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin: 0;
+    color: #4a5568;
+}
+
+.action-icon {
+    font-size: 2rem;
+    margin-bottom: 0.8rem;
+    opacity: 0.6;
+    color: #4a5568;
+}
+
+.recent-item {
+    background: rgba(255,255,255,0.4);
+    border-radius: 8px;
+    padding: 0.6rem;
+    margin-bottom: 0.4rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.recent-item:hover {
+    background: rgba(255,255,255,0.6);
+    transform: translateX(2px);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.activity-list {
+    max-height: 180px;
+    overflow-y: auto;
+    width: 100%;
+}
+
+.activity-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+}
+
+.recent-item {
+    cursor: pointer;
+}
+
+.recent-item:hover {
+    background: rgba(255,255,255,0.35) !important;
+    transform: translateX(8px);
+}
+
+.fa-spin {
+    animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.stat-number.loading {
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+}
+
+.btn-outline-purple {
+        border-color: #6f42c1;
+        color: #6f42c1;
+    }
+    
+    .btn-outline-purple:hover {
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+        color: white;
+    }
+    
+    .insights-option-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    
+    .insights-option-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Timeline styles for skill gap analysis */
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 30px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #007bff;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+        padding-left: 60px;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: 22px;
+        top: 5px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px #007bff;
+    }
+    
+    .timeline-content {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 3px solid #007bff;
+    }
+    
+    .timeline-content h6 {
+        margin-bottom: 10px;
+        color: #007bff;
+    }
+    
+    /* Match score visualization */
+    .match-score-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: white;
+        margin: 0 auto;
+    }
+    
+    .match-score-excellent {
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+    
+    .match-score-good {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+    }
+    
+    .match-score-fair {
+        background: linear-gradient(135deg, #fd7e14, #dc3545);
+    }
+    
+    .match-score-poor {
+        background: linear-gradient(135deg, #dc3545, #6f42c1);
+    }
+    
+    /* Skill badges */
+    .skill-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        margin: 0.125rem;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .skill-badge.matching {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+    
+    .skill-badge.missing {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.2);
+    }
+    
+    /* Application status indicators */
+    .status-indicator {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .status-indicator::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.pending::before {
+        background-color: #ffc107;
+    }
+    
+    .status-indicator.reviewing::before {
+        background-color: #007bff;
+    }
+    
+    .status-indicator.interview::before {
+        background-color: #17a2b8;
+    }
+    
+    .status-indicator.accepted::before {
+        background-color: #28a745;
+    }
+    
+    .status-indicator.rejected::before {
+        background-color: #dc3545;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    /* Interview notification styles */
+    .interview-notification {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .interview-card {
+        transition: transform 0.2s ease;
+    }
+    
+    .interview-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .interview-upcoming {
+        border-left: 4px solid #28a745;
+    }
+    
+    .interview-today {
+        border-left: 4px solid #ffc107;
+        animation: pulse 2s infinite;
+    }
+</style>
+
+<div class="dashboard-bento">
+    <!-- Welcome Header -->
+    <div class="bento-item welcome-header">
+        <div class="w-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="mb-0">
+                    <i class="fas fa-tachometer-alt me-2"></i>Candidate Dashboard
+                </h2>
+                <button class="btn btn-sm btn-outline-light" onclick="forceRefresh()" title="Refresh Data">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+            </div>
+            <p class="mb-1 lead" id="welcomeMessage">Welcome back!</p>
+            <small class="opacity-75">Manage your job search and applications</small>
+            <br>
+            <small class="opacity-50" id="lastUpdated">Loading...</small>
+        </div>
+    </div>
+
+    <!-- Profile Stats -->
+    <div class="bento-item profile-stats">
+        <i class="fas fa-user-circle action-icon"></i>
+        <h5 class="mb-2">Profile Status</h5>
+        <div id="profileCompletion" class="stat-number">85%</div>
+        <p class="stat-label">Complete</p>
+    </div>
+
+    <!-- Resume Statistics -->
+    <div class="bento-item resume-stat">
+        <i class="fas fa-file-alt action-icon"></i>
+        <div class="stat-number" id="resumeCount">0</div>
+        <p class="stat-label">Resumes Uploaded</p>
+    </div>
+
+    <!-- Application Statistics -->
+    <div class="bento-item application-stat">
+        <i class="fas fa-paper-plane action-icon"></i>
+        <div class="stat-number" id="applicationCount">0</div>
+        <p class="stat-label">Applications Sent</p>
+    </div>
+
+    <!-- Job Statistics -->
+    <div class="bento-item job-stat">
+        <i class="fas fa-search action-icon"></i>
+        <div class="stat-number" id="jobCount">0</div>
+        <p class="stat-label">Available Jobs</p>
+    </div>
+
+    <!-- Match Score -->
+    <div class="bento-item match-stat">
+        <i class="fas fa-chart-line action-icon text-warning"></i>
+        <div class="stat-number text-warning" id="avgMatchScore">0%</div>
+        <p class="stat-label">Avg Match Score</p>
+    </div>
+
+    <!-- Interview Statistics -->
+    <div class="bento-item interview-stat" onclick="viewCandidateInterviews()" style="cursor: pointer;">
+        <i class="fas fa-calendar-check action-icon text-info"></i>
+        <div class="stat-number text-info" id="interviewCount">0</div>
+        <p class="stat-label">Upcoming Interviews</p>
+    </div>
+
+    <!-- Upload Action -->
+    <div class="bento-item upload-action">
+        <i class="fas fa-upload action-icon text-primary"></i>
+        <h5 class="mb-2">Upload Resume</h5>
+        <p class="small mb-3">AI-powered parsing and analysis</p>
+        <a href="{{ url_for('dashboard.resumes_page') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Upload New
+        </a>
+    </div>
+
+    <!-- Browse Jobs Action -->
+    <div class="bento-item browse-action">
+        <i class="fas fa-briefcase action-icon text-success"></i>
+        <h5 class="mb-2">Browse Jobs</h5>
+        <p class="small mb-3">Find perfect matches for your skills</p>
+        <a href="{{ url_for('dashboard.jobs_page') }}" class="btn btn-success">
+            <i class="fas fa-search me-2"></i>View Jobs
+        </a>
+    </div>
+
+    <!-- Quick Apply -->
+    <div class="bento-item quick-apply">
+        <i class="fas fa-bolt action-icon"></i>
+        <h5 class="mb-2">Quick Apply</h5>
+        <p class="small mb-3">One-click applications</p>
+        <button class="btn btn-light" onclick="findQuickMatches()">
+            <i class="fas fa-magic me-2"></i>Find Matches
+        </button>
+    </div>
+
+    <!-- Recent Resumes -->
+    <div class="bento-item recent-resumes">
+        <div class="w-100">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fas fa-file-alt me-2 text-primary"></i>
+                <h5 class="mb-0">Recent Resumes</h5>
+            </div>
+            <div class="activity-list" id="recentResumes">
+                <p class="text-muted text-center">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Applications -->
+    <div class="bento-item recent-applications">
+        <div class="w-100">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fas fa-paper-plane me-2 text-success"></i>
+                <h5 class="mb-0">Recent Applications</h5>
+            </div>
+            <div class="activity-list" id="recentApplications">
+                <p class="text-muted text-center">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <h5 class="mb-3 text-muted">Quick Actions</h5>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a href="{{ url_for('dashboard.profile_page') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user me-1"></i>Edit Profile
+            </a>
+            <a href="{{ url_for('dashboard.resumes_page') }}" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-file-alt me-1"></i>Manage Resumes
+            </a>
+            <a href="{{ url_for('dashboard.jobs_page') }}" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-briefcase me-1"></i>Job Search
+            </a>
+            <button class="btn btn-outline-warning btn-sm" onclick="viewCandidateInterviews()">
+                <i class="fas fa-calendar-alt me-1"></i>My Interviews
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="showAnalytics()">
+                <i class="fas fa-chart-bar me-1"></i>Analytics
+            </button>
+            <button class="btn btn-outline-purple btn-sm" onclick="showInsightsOptions()" title="Get AI-powered insights for your resume">
+                <i class="fas fa-brain me-1"></i>Get Insights
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Interview Notification Modal (Hidden by default) -->
+<div class="modal fade" id="interviewNotificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-calendar-alt me-2"></i>Interview Scheduled!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-handshake fa-3x text-success mb-2"></i>
+                    <h6>Great news! You have been scheduled for an interview.</h6>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">${interview.title}</h6>
+                        <p><strong>Position:</strong> ${interview.job_title || 'N/A'}</p>
+                        <p><strong>Company:</strong> ${interview.company || 'N/A'}</p>
+                        <p><strong>Type:</strong> 
+                            <span class="badge bg-secondary">${interview.interview_type}</span>
+                        </p>
+                        <p><strong>Date & Time:</strong><br>
+                            <span class="text-primary fw-bold">
+                                ${new Date(interview.scheduled_at).toLocaleDateString()} at 
+                                ${new Date(interview.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                        </p>
+                        <p><strong>Duration:</strong> ${interview.duration_minutes} minutes</p>
+                        ${interview.location ? `<p><strong>Location:</strong> ${interview.location}</p>` : ''}
+                        ${interview.meeting_link ? `
+                            <p><strong>Meeting Link:</strong><br>
+                                <a href="${interview.meeting_link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-video me-1"></i>Join Meeting
+                                </a>
+                            </p>
+                        ` : ''}
+                        ${interview.description ? `<p><strong>Description:</strong><br>${interview.description}</p>` : ''}
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Tips:</strong> Prepare for your interview by reviewing the job description and researching the company. Good luck!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="viewCandidateInterviews(); bootstrap.Modal.getInstance(document.getElementById('interviewNotificationModal')).hide();">
+                    <i class="fas fa-calendar me-1"></i>View All Interviews
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+// Global variables for real-time updates
+let socket;
+let refreshInterval;
+let lastUpdateTime = 0;
+let isConnected = false;
+
+// Helper function to get auth headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+// Helper function to show alerts
+function showAlert(message, type = 'info', duration = 5000) {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert-floating');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed alert-floating`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after specified duration (unless duration is 0)
+    if (duration > 0) {
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, duration);
+    }
+}
+
+// Helper function to show toasts
+function showToast(message, type = 'info', duration = 5000) {
+    showAlert(message, type, duration);
+}
+
+// Helper functions for loading states
+function showLoadingState() {
+    const loadingElements = document.querySelectorAll('.stat-number');
+    loadingElements.forEach(el => {
+        if (!el.classList.contains('loading')) {
+            el.classList.add('loading');
+            el.textContent = '...';
+        }
+    });
+}
+
+function hideLoadingState() {
+    const loadingElements = document.querySelectorAll('.stat-number.loading');
+    loadingElements.forEach(el => {
+        el.classList.remove('loading');
+    });
+}
+
+function showErrorState(message) {
+    showAlert(message, 'danger');
+    hideLoadingState();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeRealTimeConnection();
+    loadDashboardData();
+});
+
+function initializeRealTimeConnection() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.error('No authentication token found');
+        return;
+    }
+    
+    // Initialize Socket.IO connection
+    socket = io({
+        auth: { token: token },
+        query: { token: token }
+    });
+    
+    // Connection events
+    socket.on('connect', function() {
+        console.log('Connected to real-time service');
+        isConnected = true;
+        updateConnectionStatus(true);
+        
+        // Join user room for personalized updates
+        socket.emit('join_user_room', { token: token });
+    });
+    
+    socket.on('disconnect', function() {
+        console.log('Disconnected from real-time service');
+        isConnected = false;
+        updateConnectionStatus(false);
+    });
+    
+    socket.on('connect_error', function(error) {
+        console.error('Connection error:', error);
+        isConnected = false;
+        updateConnectionStatus(false);
+    });
+    
+    // Real-time data updates
+    socket.on('dashboard_update', function(data) {
+        console.log('Dashboard update received:', data);
+        updateDashboardUI(data);
+        
+        // Show notification for specific events
+        if (data.event) {
+            handleRealTimeEvent(data.event);
+        }
+    });
+    
+    socket.on('new_job_posted', function(data) {
+        console.log('New job posted:', data);
+        showToast(`New job posted: ${data.job.title} at ${data.job.company}`, 'info');
+        
+        // Update job count if available
+        const jobCountEl = document.getElementById('jobCount');
+        if (jobCountEl) {
+            const currentCount = parseInt(jobCountEl.textContent) || 0;
+            jobCountEl.textContent = currentCount + 1;
+        }
+    });
+    
+    socket.on('application_status_changed', function(data) {
+        console.log('Application status changed:', data);
+        showToast(`Application status updated: ${data.application.job_title} - ${data.application.status}`, 'info');
+        
+        // Refresh dashboard data
+        loadDashboardData();
+    });
+    
+    socket.on('interview_scheduled', function(data) {
+        console.log('Interview scheduled:', data);
+        showToast(`Interview scheduled for ${data.interview.job_title} on ${new Date(data.interview.scheduled_at).toLocaleDateString()}`, 'success', 10000);
+        
+        // Update interview count and refresh dashboard
+        loadInterviewCount();
+        loadDashboardData();
+        
+        // Show interview notification modal
+        showInterviewNotificationModal(data.interview);
+    });
+    
+    socket.on('interview_updated', function(data) {
+        console.log('Interview updated:', data);
+        showToast(`Interview updated: ${data.interview.title}`, 'info');
+        
+        // Refresh dashboard data
+        loadInterviewCount();
+        loadDashboardData();
+    });
+    
+    socket.on('interview_cancelled', function(data) {
+        console.log('Interview cancelled:', data);
+        showToast(`Interview cancelled: ${data.interview.title}`, 'warning');
+        
+        // Refresh dashboard data
+        loadInterviewCount();
+        loadDashboardData();
+    });
+    
+    socket.on('error', function(error) {
+        console.error('Socket error:', error);
+        showToast(error.message || 'Real-time connection error', 'danger');
+    });
+    
+    socket.on('joined_room', function(data) {
+        console.log('Joined real-time room:', data);
+        showToast('Connected to live updates', 'success', 3000);
+    });
+}
+
+function updateConnectionStatus(connected) {
+    const statusIndicator = document.getElementById('connectionStatus');
+    if (!statusIndicator) {
+        // Create status indicator if it doesn't exist
+        const indicator = document.createElement('small');
+        indicator.id = 'connectionStatus';
+        indicator.className = 'opacity-50';
+        const lastUpdatedEl = document.getElementById('lastUpdated');
+        if (lastUpdatedEl && lastUpdatedEl.parentNode) {
+            lastUpdatedEl.parentNode.insertBefore(indicator, lastUpdatedEl.nextSibling);
+        }
+    }
+    
+    const indicator = document.getElementById('connectionStatus');
+    if (indicator) {
+        if (connected) {
+            indicator.innerHTML = ' • <span class="text-success">Live</span>';
+        } else {
+            indicator.innerHTML = ' • <span class="text-danger">Offline</span>';
+        }
+    }
+}
+
+function handleRealTimeEvent(event) {
+    switch (event.type) {
+        case 'resume_uploaded':
+            showToast(`Resume "${event.data.filename}" uploaded successfully!`, 'success');
+            break;
+        case 'application_submitted':
+            showToast(`Applied to ${event.data.job_title} at ${event.data.company} (${event.data.match_score}% match)`, 'success');
+            break;
+        case 'application_withdrawn':
+            showToast(`Application withdrawn from ${event.data.job_title}`, 'info');
+            break;
+        default:
+            console.log('Unhandled real-time event:', event);
+    }
+}
+
+function updateDashboardUI(data) {
+    try {
+        if (data.error) {
+            console.error('Dashboard data error:', data.error);
+            return;
+        }
+        
+        // Update statistics
+        if (data.statistics) {
+            const stats = data.statistics;
+            updateStatElement('resumeCount', stats.resume_count);
+            updateStatElement('applicationCount', stats.application_count);
+            updateStatElement('jobCount', stats.job_count);
+            updateStatElement('avgMatchScore', `${stats.avg_match_score}%`);
+            updateStatElement('profileCompletion', `${stats.profile_completion}%`);
+        }
+        
+        // Load interview count separately
+        loadInterviewCount();
+        
+        // Update recent resumes
+        if (data.recent_resumes) {
+            displayRecentResumes(data.recent_resumes);
+        }
+        
+        // Update recent applications
+        if (data.recent_applications) {
+            displayRecentApplications(data.recent_applications);
+        }
+        
+        // Update welcome message
+        if (data.user && data.user.name) {
+            const welcomeEl = document.getElementById('welcomeMessage');
+            if (welcomeEl) {
+                welcomeEl.textContent = `Welcome back, ${data.user.name}!`;
+            }
+        }
+        
+        // Update last refresh time
+        lastUpdateTime = Date.now();
+        updateLastUpdatedIndicator();
+        hideLoadingState();
+        
+    } catch (error) {
+        console.error('Error updating dashboard UI:', error);
+    }
+}
+
+function updateStatElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element && element.textContent !== value.toString()) {
+        element.classList.add('loading');
+        setTimeout(() => {
+            element.textContent = value;
+            element.classList.remove('loading');
+            
+            // Add a subtle animation
+            element.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 200);
+        }, 150);
+    }
+}
+
+async function loadDashboardData() {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Set welcome message
+    const welcomeEl = document.getElementById('welcomeMessage');
+    if (welcomeEl && user.name) {
+        welcomeEl.textContent = `Welcome back, ${user.name}!`;
+    }
+    
+    try {
+        // Show loading state
+        showLoadingState();
+        
+        // If socket is connected, request real-time update
+        if (socket && isConnected) {
+            socket.emit('request_dashboard_update');
+            return; // Real-time update will handle UI refresh
+        }
+        
+        // Fallback to API calls if socket not available
+        Promise.all([
+            fetch('/api/resumes/list', { headers: getAuthHeaders() }),
+            fetch('/api/jobs/'),
+            fetch('/api/jobs/applications/me/with-analysis', { headers: getAuthHeaders() })
+        ])
+        .then(responses => {
+            // Check if all responses are ok
+            const hasErrors = responses.some(r => !r.ok);
+            if (hasErrors) {
+                throw new Error('One or more API requests failed');
+            }
+            
+            return Promise.all(responses.map(r => r.json()));
+        })
+        .then(([resumesData, jobsData, applicationStats]) => {
+            // Update UI with API data
+            if (resumesData) {
+                document.getElementById('resumeCount').textContent = resumesData.resumes.length;
+                displayRecentResumes(resumesData.resumes.slice(0, 5));
+            }
+            
+            if (jobsData) {
+                document.getElementById('jobCount').textContent = jobsData.jobs.length;
+            }
+            
+            if (applicationStats) {
+                document.getElementById('applicationCount').textContent = applicationStats.total || 0;
+                const applicationsWithScores = applicationStats.applications?.filter(app => app.match_score) || [];
+                const avgMatchScore = applicationsWithScores.length > 0 
+                    ? applicationsWithScores.reduce((sum, app) => sum + app.match_score, 0) / applicationsWithScores.length 
+                    : 0;
+                document.getElementById('avgMatchScore').textContent = `${Math.round(avgMatchScore)}%`;
+                displayRecentApplications(applicationStats.applications?.slice(0, 5) || []);
+                
+                // Update profile completion if available
+                if (applicationStats.profile_completion !== undefined) {
+                    document.getElementById('profileCompletion').textContent = `${Math.round(applicationStats.profile_completion)}%`;
+                }
+            }
+            
+            // Update last refresh time
+            lastUpdateTime = Date.now();
+            updateLastUpdatedIndicator();
+            hideLoadingState();
+        })
+        .catch(error => {
+            console.error('Error loading dashboard data:', error);
+            showErrorState('Failed to load dashboard data. Please refresh the page.');
+        });
+        
+    } catch (error) {
+        console.error('Error in dashboard initialization:', error);
+        showErrorState('Failed to load dashboard data. Please refresh the page.');
+    }
+}
+
+function forceRefresh() {
+    const refreshIcon = document.getElementById('refreshIcon');
+    refreshIcon.classList.add('fa-spin');
+    
+    if (socket && isConnected) {
+        socket.emit('request_dashboard_update');
+        setTimeout(() => {
+            refreshIcon.classList.remove('fa-spin');
+        }, 1000);
+    } else {
+        loadDashboardData().finally(() => {
+            refreshIcon.classList.remove('fa-spin');
+        });
+    }
+}
+
+function updateLastUpdatedIndicator() {
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    if (lastUpdatedEl) {
+        const now = new Date();
+        lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+    }
+}
+
+// Enhanced functions with better error handling
+async function loadResumes(token) {
+    try {
+        const response = await fetch('/api/resumes/list', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            return await response.json();
+        }
+        throw new Error('Failed to load resumes');
+    } catch (error) {
+        console.error('Error loading resumes:', error);
+        return null;
+    }
+}
+
+async function loadJobs() {
+    try {
+        const response = await fetch('/api/jobs/');
+        
+        if (response.ok) {
+            return await response.json();
+        }
+        throw new Error('Failed to load jobs');
+    } catch (error) {
+        console.error('Error loading jobs:', error);
+        return null;
+    }
+}
+
+async function loadApplicationStats(token) {
+    try {
+        const response = await fetch('/api/jobs/applications/stats/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            return await response.json();
+        }
+        throw new Error('Failed to load application stats');
+    } catch (error) {
+        console.error('Error loading application stats:', error);
+        return null;
+    }
+}
+
+function displayRecentResumes(resumes) {
+    const container = document.getElementById('recentResumes');
+    if (!container) return;
+    
+    if (!resumes || resumes.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No resumes uploaded yet</p>';
+        return;
+    }
+    
+    container.innerHTML = resumes.map(resume => `
+        <div class="recent-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div onclick="viewResume(${resume.id})" style="cursor: pointer; flex-grow: 1;">
+                    <strong>${resume.filename || 'Unnamed Resume'}</strong>
+                    <br>
+                    <small class="text-muted">
+                        ${resume.skills ? resume.skills.length : 0} skills • 
+                        ${new Date(resume.created_at).toLocaleDateString()}
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); getResumeInsights(${resume.id})" title="Get AI Insights">
+                        <i class="fas fa-brain"></i>
+                    </button>
+                    <i class="fas fa-chevron-right text-muted"></i>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayRecentApplications(applications) {
+    const container = document.getElementById('recentApplications');
+    if (!container) return;
+    
+    if (!applications || applications.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No applications yet</p>';
+        return;
+    }
+    
+    container.innerHTML = applications.map(app => `
+        <div class="recent-item" onclick="viewApplicationWithAnalysis(${app.id})">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${app.job?.title || app.job_title || 'Unknown Job'}</strong>
+                    <br>
+                    <small class="text-muted">
+                        ${app.job?.company || app.company || 'Unknown Company'} • 
+                        <span class="badge bg-${getStatusColor(app.status)} text-white me-1">
+                            ${app.status || 'pending'}
+                        </span>
+                        ${typeof app.match_score === 'number' ? 
+                            `<span class="badge bg-${app.match_score >= 80 ? 'success' : app.match_score >= 60 ? 'warning' : 'danger'}">
+                                ${Math.round(app.match_score)}% match
+                            </span>` : 
+                            '<span class="badge bg-secondary">No analysis</span>'
+                        }
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    ${typeof app.match_score === 'number' ? 
+                        `<div class="text-center">
+                            <div class="small text-muted">Match</div>
+                            <div class="fw-bold text-${app.match_score >= 80 ? 'success' : app.match_score >= 60 ? 'warning' : 'danger'}">
+                                ${Math.round(app.match_score)}%
+                            </div>
+                        </div>` : 
+                        `<button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); analyzeApplicationMatch(${app.id})" title="Analyze Match">
+                            <i class="fas fa-chart-line"></i>
+                        </button>`
+                    }
+                    <i class="fas fa-chevron-right text-muted"></i>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getStatusColor(status) {
+    if (!status) return 'secondary';
+    
+    switch (status.toLowerCase()) {
+        case 'accepted': 
+        case 'hired': return 'success';
+        case 'rejected': return 'danger';
+        case 'pending': return 'warning';
+        case 'interview': 
+        case 'interviewing': return 'info';
+        case 'withdrawn': return 'dark';
+        case 'reviewing': return 'primary';
+        default: return 'secondary';
+    }
+}
+
+// Navigation functions
+async function viewApplication(applicationId) {
+    try {
+        // Show loading toast
+        showToast('Loading application details...', 'info');
+        
+        const response = await fetch(`/api/jobs/applications/${applicationId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const application = await response.json();
+            showApplicationDetails(application);
+        } else {
+            throw new Error('Could not load application details');
+        }
+    } catch (error) {
+        console.error('Error viewing application:', error);
+        showToast('Could not load application details', 'danger');
+    }
+}
+
+function showApplicationDetails(application) {
+    // Create modal for application details if it doesn't exist
+    let modal = document.getElementById('applicationDetailModal');
+    
+    if (!modal) {
+        const modalHtml = `
+            <div class="modal fade" id="applicationDetailModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Application Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="applicationDetailContent">
+                            <!-- Content will be loaded here -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-danger" id="withdrawApplicationBtn">
+                                Withdraw Application
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('applicationDetailModal');
+        
+        // Add event handler for withdraw button
+        document.getElementById('withdrawApplicationBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to withdraw this application?')) {
+                withdrawApplication(currentApplicationId);
+            }
+        });
+    }
+    
+    // Store current application ID
+    window.currentApplicationId = application.id;
+    
+    // Format application content
+    const content = document.getElementById('applicationDetailContent');
+    const matchScore = typeof application.match_score === 'number' ? 
+        Math.round(application.match_score * 100) : 'N/A';
+    
+    content.innerHTML = `
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h4>${application.job_title || 'Unknown Job'}</h4>
+                <h6 class="text-muted">${application.company || 'Unknown Company'}</h6>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="badge bg-${getStatusColor(application.status)} fs-5">${application.status || 'Pending'}</div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Application Details</div>
+                    <div class="card-body">
+                        <p><strong>Applied on:</strong> ${new Date(application.applied_at).toLocaleDateString()}</p>
+                        <p><strong>Status:</strong> ${application.status || 'Pending'}</p>
+                        <p><strong>Match Score:</strong> ${matchScore}%</p>
+                        ${application.feedback ? `<p><strong>Feedback:</strong> ${application.feedback}</p>` : ''}
+                        ${application.interview_date ? 
+                            `<p><strong>Interview Date:</strong> ${new Date(application.interview_date).toLocaleString()}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Resume Used</div>
+                    <div class="card-body">
+                        <p><strong>Resume:</strong> ${application.resume_name || 'Unknown'}</p>
+                        ${application.cover_letter ? 
+                            `<div class="mt-3">
+                                <strong>Cover Letter:</strong>
+                                <div class="border rounded p-2 mt-1 bg-light">${application.cover_letter}</div>
+                            </div>` : 
+                            '<p>No cover letter submitted</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        ${application.match_analysis ? `
+            <div class="card mb-4">
+                <div class="card-header">Skill Match Analysis</div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                            <div class="progress-bar bg-success" style="width: ${matchScore}%">${matchScore}%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Matching Skills</h6>
+                            <ul class="list-group">
+                                ${application.match_analysis.matching_skills?.map(skill => 
+                                    `<li class="list-group-item d-flex align-items-center">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        ${skill}
+                                    </li>`
+                                ).join('') || '<li class="list-group-item">No matching skills found</li>'}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Missing Skills</h6>
+                            <ul class="list-group">
+                                ${application.match_analysis.missing_skills?.map(skill => 
+                                    `<li class="list-group-item d-flex align-items-center">
+                                        <i class="fas fa-times-circle text-danger me-2"></i>
+                                        ${skill}
+                                    </li>`
+                                ).join('') || '<li class="list-group-item">No missing skills found</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+        
+        ${application.status_history?.length > 0 ? `
+            <div class="card">
+                <div class="card-header">Status History</div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        ${application.status_history.map(history => `
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <span>${history.status}</span>
+                                    <small class="text-muted">${new Date(history.timestamp).toLocaleString()}</small>
+                                </div>
+                                ${history.note ? `<small class="text-muted">${history.note}</small>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            </div>
+        ` : ''}
+    `;
+    
+    // Show withdraw button only if application is not already withdrawn
+    const withdrawBtn = document.getElementById('withdrawApplicationBtn');
+    withdrawBtn.style.display = ['withdrawn', 'rejected', 'hired'].includes(application.status?.toLowerCase()) ? 'none' : 'block';
+    
+    // Show the modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+async function withdrawApplication(applicationId) {
+    try {
+        const response = await fetch(`/api/jobs/applications/${applicationId}/withdraw`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            showToast('Application successfully withdrawn', 'success');
+            
+            // Hide the modal
+            bootstrap.Modal.getInstance(document.getElementById('applicationDetailModal')).hide();
+            
+            // Refresh dashboard data
+            loadDashboardData();
+            
+            // Emit socket event if available
+            if (socket && socket.connected) {
+                socket.emit('application_withdrawn', { application_id: applicationId });
+            }
+        } else {
+            const data = await response.json();
+            throw new Error(data.message || 'Failed to withdraw application');
+        }
+    } catch (error) {
+        console.error('Error withdrawing application:', error);
+        showToast(error.message || 'Error withdrawing application', 'danger');
+    }
+}
+
+// Resume Insights functionality
+async function getResumeInsights(resumeId) {
+    try {
+        // Show loading indicator
+        showAlert('Generating AI insights for your resume...', 'info', 0);
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/resumes/${resumeId}/insights`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        // Remove loading alert
+        const alertContainer = document.getElementById('alertContainer');
+        if (alertContainer) {
+            alertContainer.innerHTML = '';
+        }
+        
+        if (data.success) {
+            displayInsightsModal(data.insights);
+        } else {
+            showAlert(data.error || 'Failed to generate insights', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error fetching resume insights:', error);
+        showAlert('Failed to generate insights. Please try again.', 'danger');
+    }
+}
+
+function displayInsightsModal(insights) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal fade" id="insightsModal" tabindex="-1" aria-labelledby="insightsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="insightsModalLabel">
+                            <i class="fas fa-brain me-2"></i>AI Resume Insights
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${generateInsightsHTML(insights)}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadInsightsReport(${JSON.stringify(insights).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-download me-1"></i>Download Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('insightsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('insightsModal'));
+    modal.show();
+}
+
+function generateInsightsHTML(insights) {
+    let html = '';
+    
+    // Technical Assessment Overview
+    if (insights.technical_assessment) {
+        const assessment = insights.technical_assessment;
+        html += `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Technical Assessment</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="display-4 text-primary">${assessment.overall_rating}/10</div>
+                                <small class="text-muted">Overall Rating</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="h4 text-success">${assessment.technical_strength}</div>
+                                <small class="text-muted">Technical Level</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-0">${assessment.summary}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Skills Analysis
+    if (insights.skills_analysis) {
+        const skills = insights.skills_analysis;
+        html += `
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Skills Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+        `;
+        
+        // Technical Skills
+        if (skills.technical_skills) {
+            Object.keys(skills.technical_skills).forEach(category => {
+                if (skills.technical_skills[category] && skills.technical_skills[category].length > 0) {
+                    html += `
+                        <div class="col-md-6 mb-3">
+                            <h6>${category.replace(/_/g, ' ').toUpperCase()}</h6>
+                            <div class="skill-list">
+                    `;
+                    skills.technical_skills[category].forEach(skill => {
+                        const badgeClass = getProficiencyBadgeClass(skill.proficiency);
+                        html += `
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>${skill.skill}</span>
+                                <span class="badge ${badgeClass}">${skill.proficiency}</span>
+                            </div>
+                            <small class="text-muted d-block mb-2">${skill.evidence}</small>
+                        `;
+                    });
+                    html += `</div></div>`;
+                }
+            });
+        }
+        
+        html += `</div></div></div>`;
+    }
+    
+    // Strengths and Recommendations
+    if (insights.strengths || insights.recommendations) {
+        html += `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-star me-2"></i>Key Strengths</h6>
+                        </div>
+                        <div class="card-body">
+        `;
+        
+        if (insights.strengths) {
+            insights.strengths.forEach(strength => {
+                html += `
+                    <div class="mb-3">
+                        <strong>${strength.strength}</strong>
+                        <p class="mb-1">${strength.evidence}</p>
+                        <small class="text-success">${strength.market_value}</small>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Recommendations</h6>
+                        </div>
+                        <div class="card-body">
+        `;
+        
+        if (insights.recommendations && insights.recommendations.immediate_improvements) {
+            insights.recommendations.immediate_improvements.forEach(improvement => {
+                const priorityClass = improvement.priority === 'High' ? 'danger' : 
+                                    improvement.priority === 'Medium' ? 'warning' : 'info';
+                html += `
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <strong>${improvement.area}</strong>
+                            <span class="badge bg-${priorityClass}">${improvement.priority}</span>
+                        </div>
+                        <p class="mb-0">${improvement.action}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Market Positioning
+    if (insights.market_positioning) {
+        const positioning = insights.market_positioning;
+        html += `
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Market Positioning</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>Experience Level</h6>
+                            <span class="badge bg-primary">${positioning.experience_level}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Market Demand</h6>
+                            <span class="badge bg-${positioning.market_demand === 'High' ? 'success' : positioning.market_demand === 'Medium' ? 'warning' : 'secondary'}">${positioning.market_demand}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Suitable Roles</h6>
+                            <div>
+                                ${positioning.suitable_roles ? positioning.suitable_roles.map(role => `<span class="badge bg-outline-secondary me-1">${role}</span>`).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${positioning.salary_range_estimate ? `<p class="mt-3"><strong>Estimated Salary Range:</strong> ${positioning.salary_range_estimate}</p>` : ''}
+                    ${positioning.competitive_advantage ? `<p><strong>Competitive Advantage:</strong> ${positioning.competitive_advantage}</p>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
+function getProficiencyBadgeClass(proficiency) {
+    switch (proficiency?.toLowerCase()) {
+        case 'expert': return 'bg-success';
+        case 'advanced': return 'bg-primary';
+        case 'intermediate': return 'bg-warning';
+        case 'beginner': return 'bg-secondary';
+        default: return 'bg-info';
+    }
+}
+
+function downloadInsightsReport(insights) {
+    // Create a formatted text report
+    let report = "RESUME INSIGHTS REPORT\n";
+    report += "=".repeat(50) + "\n\n";
+    
+    if (insights.technical_assessment) {
+        report += "TECHNICAL ASSESSMENT\n";
+        report += "-".repeat(20) + "\n";
+        report += `Overall Rating: ${insights.technical_assessment.overall_rating}/10\n`;
+        report += `Technical Strength: ${insights.technical_assessment.technical_strength}\n`;
+        report += `Summary: ${insights.technical_assessment.summary}\n\n`;
+    }
+    
+    if (insights.strengths) {
+        report += "KEY STRENGTHS\n";
+        report += "-".repeat(20) + "\n";
+        insights.strengths.forEach((strength, index) => {
+            report += `${index + 1}. ${strength.strength}\n`;
+            report += `   Evidence: ${strength.evidence}\n`;
+            report += `   Market Value: ${strength.market_value}\n\n`;
+        });
+    }
+    
+    if (insights.recommendations && insights.recommendations.immediate_improvements) {
+        report += "RECOMMENDATIONS\n";
+        report += "-".repeat(20) + "\n";
+        insights.recommendations.immediate_improvements.forEach((rec, index) => {
+            report += `${index + 1}. ${rec.area} (${rec.priority} Priority)\n`;
+            report += `   Action: ${rec.action}\n\n`;
+        });
+    }
+    
+    report += `\nGenerated on: ${new Date().toLocaleString()}\n`;
+    report += "Generated by: AI-Powered ATS Resume Insights\n";
+    
+    // Create and download file
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `resume_insights_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    showAlert('Insights report downloaded successfully!', 'success');
+}
+
+// Load interview count for candidates
+async function loadInterviewCount() {
+    try {
+        const response = await fetch('/api/interviews/candidate/count', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateStatElement('interviewCount', data.count || 0);
+        } else {
+            console.error('Failed to load interview count');
+            updateStatElement('interviewCount', 0);
+        }
+    } catch (error) {
+        console.error('Error loading interview count:', error);
+        updateStatElement('interviewCount', 0);
+    }
+}
+
+// View candidate interviews
+async function viewCandidateInterviews() {
+    try {
+        showAlert('Loading your interviews...', 'info');
+        
+        const response = await fetch('/api/interviews/candidate', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showCandidateInterviewsModal(data.interviews || []);
+        } else {
+            throw new Error('Failed to load interviews');
+        }
+    } catch (error) {
+        console.error('Error loading interviews:', error);
+        showAlert('Could not load interviews', 'danger');
+    }
+}
+
+function showCandidateInterviewsModal(interviews) {
+    const modalHtml = `
+        <div class="modal fade" id="candidateInterviewsModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-calendar-alt me-2"></i>My Interviews
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${interviews.length > 0 ? `
+                            <div class="row">
+                                ${interviews.map(interview => {
+                                    const isToday = new Date(interview.scheduled_at).toDateString() === new Date().toDateString();
+                                    const isUpcoming = new Date(interview.scheduled_at) > new Date();
+                                    const cardClass = isToday ? 'interview-today' : (isUpcoming ? 'interview-upcoming' : '');
+                                    
+                                    return `
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 interview-card ${cardClass} ${getInterviewCardClass(interview.status)}">
+                                            <div class="card-header d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">${interview.title}</h6>
+                                                <div>
+                                                    ${isToday ? '<span class="badge bg-warning me-1">Today</span>' : ''}
+                                                    <span class="badge bg-${getInterviewStatusColor(interview.status)}">
+                                                        ${interview.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Position:</strong> ${interview.job_title || 'N/A'}</p>
+                                                <p><strong>Company:</strong> ${interview.company || 'N/A'}</p>
+                                                <p><strong>Type:</strong> 
+                                                    <span class="badge bg-secondary">${interview.interview_type}</span>
+                                                </p>
+                                                <p><strong>Date & Time:</strong><br>
+                                                    <span class="${isToday ? 'text-warning fw-bold' : isUpcoming ? 'text-success' : 'text-muted'}">
+                                                        ${new Date(interview.scheduled_at).toLocaleDateString()} at 
+                                                        ${new Date(interview.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    </span>
+                                                </p>
+                                                <p><strong>Duration:</strong> ${interview.duration_minutes} minutes</p>
+                                                ${interview.location ? `<p><strong>Location:</strong> ${interview.location}</p>` : ''}
+                                                ${interview.meeting_link ? `
+                                                    <p><strong>Meeting Link:</strong><br>
+                                                        <a href="${interview.meeting_link}" target="_blank" class="btn btn-sm btn-primary">
+                                                            <i class="fas fa-video me-1"></i>Join Meeting
+                                                        </a>
+                                                    </p>
+                                                ` : ''}
+                                                ${interview.description ? `<p><strong>Description:</strong><br>${interview.description}</p>` : ''}
+                                            </div>
+                                            <div class="card-footer d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    Scheduled ${timeAgo(interview.created_at)}
+                                                </small>
+                                                ${interview.status === 'scheduled' && new Date(interview.scheduled_at) > new Date() ? `
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="addToCalendar(${interview.id})">
+                                                        <i class="fas fa-calendar-plus"></i>
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-5">
+                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Interviews Scheduled</h5>
+                                <p class="text-muted">You don't have any interviews scheduled yet.</p>
+                            </div>
+                        `}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('candidateInterviewsModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add new modal
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('candidateInterviewsModal'));
+    modal.show();
+}
+
+function getInterviewStatusColor(status) {
+    switch (status?.toLowerCase()) {
+        case 'scheduled': return 'primary';
+        case 'completed': return 'success';
+        case 'cancelled': return 'danger';
+        case 'rescheduled': return 'warning';
+        default: return 'secondary';
+    }
+}
+
+function getInterviewCardClass(status) {
+    switch (status?.toLowerCase()) {
+        case 'scheduled': return 'border-primary';
+        case 'completed': return 'border-success';
+        case 'cancelled': return 'border-danger';
+        case 'rescheduled': return 'border-warning';
+        default: return '';
+    }
+}
+
+function addToCalendar(interviewId) {
+    showAlert('Calendar integration coming soon!', 'info');
+}
+
+function timeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+    return `${Math.ceil(diffDays / 30)} months ago`;
+}
+
+function showInterviewNotificationModal(interview) {
+    const modalHtml = `
+        <div class="modal fade" id="interviewNotificationModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-calendar-alt me-2"></i>Interview Scheduled!
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-handshake fa-3x text-success mb-2"></i>
+                            <h6>Great news! You have been scheduled for an interview.</h6>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${interview.title}</h6>
+                                <p><strong>Position:</strong> ${interview.job_title || 'N/A'}</p>
+                                <p><strong>Company:</strong> ${interview.company || 'N/A'}</p>
+                                <p><strong>Type:</strong> 
+                                    <span class="badge bg-secondary">${interview.interview_type}</span>
+                                </p>
+                                <p><strong>Date & Time:</strong><br>
+                                    <span class="text-primary fw-bold">
+                                        ${new Date(interview.scheduled_at).toLocaleDateString()} at 
+                                        ${new Date(interview.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </span>
+                                </p>
+                                <p><strong>Duration:</strong> ${interview.duration_minutes} minutes</p>
+                                ${interview.location ? `<p><strong>Location:</strong> ${interview.location}</p>` : ''}
+                                ${interview.meeting_link ? `
+                                    <p><strong>Meeting Link:</strong><br>
+                                        <a href="${interview.meeting_link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-video me-1"></i>Join Meeting
+                                        </a>
+                                    </p>
+                                ` : ''}
+                                ${interview.description ? `<p><strong>Description:</strong><br>${interview.description}</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Tips:</strong> Prepare for your interview by reviewing the job description and researching the company. Good luck!
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="viewCandidateInterviews(); bootstrap.Modal.getInstance(document.getElementById('interviewNotificationModal')).hide();">
+                            <i class="fas fa-calendar me-1"></i>View All Interviews
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('interviewNotificationModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add new modal
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('interviewNotificationModal'));
+    modal.show();
+}
+
+// Job Match Analysis Functions
+async function viewApplicationWithAnalysis(applicationId) {
+    try {
+        showAlert('Loading application details...', 'info');
+        
+        // First get the application details
+        const response = await fetch(`/api/jobs/applications/${applicationId}`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Could not load application details');
+        }
+        
+        const application = await response.json();
+        
+        // Then get the match analysis
+        const analysisResponse = await fetch(`/api/jobs/applications/${applicationId}/match-analysis`, {
+            headers: getAuthHeaders()
+        });
+        
+        let analysis = null;
+        if (analysisResponse.ok) {
+            const analysisData = await analysisResponse.json();
+            analysis = analysisData.analysis;
+        }
+        
+        showApplicationDetailsWithAnalysis(application, analysis);
+        
+    } catch (error) {
+        console.error('Error viewing application:', error);
+        showAlert('Could not load application details', 'danger');
+    }
+}
+
+async function analyzeApplicationMatch(applicationId) {
+    try {
+        showAlert('Analyzing job match...', 'info', 0);
+        
+        const response = await fetch(`/api/jobs/applications/${applicationId}/match-analysis`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to analyze match');
+        }
+        
+        const data = await response.json();
+        showAlert('Match analysis completed!', 'success');
+        
+        // Refresh the dashboard to show updated match scores
+        loadDashboardData();
+        
+        // Show the analysis
+        viewApplicationWithAnalysis(applicationId);
+        
+    } catch (error) {
+        console.error('Error analyzing match:', error);
+        showAlert('Failed to analyze job match', 'danger');
+    }
+}
+
+function showApplicationDetailsWithAnalysis(application, analysis) {
+    // Create modal for application details if it doesn't exist
+    let modal = document.getElementById('applicationDetailModal');
+    
+    if (!modal) {
+        const modalHtml = `
+            <div class="modal fade" id="applicationDetailModal" tabindex="-1">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Application Details & Match Analysis</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="applicationDetailContent">
+                            <!-- Content will be populated dynamically -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-danger" id="withdrawApplicationBtn" onclick="withdrawApplication(currentApplicationId)">
+                                Withdraw Application
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('applicationDetailModal');
+    }
+    
+    // Store current application ID
+    window.currentApplicationId = application.id;
+    
+    // Generate content with analysis
+    const content = document.getElementById('applicationDetailContent');
+    content.innerHTML = generateApplicationDetailsHTML(application, analysis);
+    
+    // Show withdraw button only if application is not already withdrawn
+    const withdrawBtn = document.getElementById('withdrawApplicationBtn');
+    withdrawBtn.style.display = ['withdrawn', 'rejected', 'hired'].includes(application.status?.toLowerCase()) ? 'none' : 'block';
+    
+    // Show the modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+function generateApplicationDetailsHTML(application, analysis) {
+    if (!analysis) {
+        return generateBasicApplicationHTML(application);
+    }
+    
+    const matchScore = analysis.overall_match_score || 0;
+    const matchColor = matchScore >= 80 ? 'success' : matchScore >= 60 ? 'warning' : 'danger';
+    
+    return `
+        <div class="row">
+            <!-- Application Overview -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">Application Details</h6>
+                        <p><strong>Company:</strong> ${application.job?.company || 'Unknown'}</p>
+                        <p><strong>Position:</strong> ${application.job?.title || 'Unknown'}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-${getStatusColor(application.status)}">
+                                ${application.status || 'pending'}
+                            </span>
+                        </p>
+                        <p><strong>Applied:</strong> ${new Date(application.created_at).toLocaleDateString()}</p>
+                        <p><strong>Resume:</strong> ${application.resume?.filename || 'Unknown'}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Match Score Overview -->
+            <div class="col-md-8 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">Match Analysis Overview</h6>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <div class="h3 text-${matchColor}">${matchScore}%</div>
+                                    <small class="text-muted">Overall Match</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <div class="h3 text-info">${analysis.skill_match_score || 0}%</div>
+                                    <small class="text-muted">Skills</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <div class="h3 text-warning">${analysis.experience_match_score || 0}%</div>
+                                    <small class="text-muted">Experience</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <div class="h3 text-primary">${analysis.education_match_score || 0}%</div>
+                                    <small class="text-muted">Education</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress">
+                                <div class="progress-bar bg-${matchColor}" style="width: ${matchScore}%"></div>
+                            </div>
+                            <small class="text-muted">Fit Assessment: ${analysis.fit_assessment || 'Unknown'}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Matching Skills -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-success">
+                            <i class="fas fa-check-circle me-2"></i>Matching Skills
+                        </h6>
+                        ${analysis.matching_skills && analysis.matching_skills.length > 0 ? 
+                            `<div class="d-flex flex-wrap gap-1">
+                                ${analysis.matching_skills.map(skill => 
+                                    `<span class="badge bg-success">${skill}</span>`
+                                ).join('')}
+                            </div>` : 
+                            '<p class="text-muted">No matching skills identified</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Missing Skills -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Missing Skills
+                        </h6>
+                        ${analysis.missing_skills && analysis.missing_skills.length > 0 ? 
+                            `<div class="d-flex flex-wrap gap-1">
+                                ${analysis.missing_skills.map(skill => 
+                                    `<span class="badge bg-warning text-dark">${skill}</span>`
+                                ).join('')}
+                            </div>` : 
+                            '<p class="text-muted">No missing skills found</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Strengths -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-success">
+                            <i class="fas fa-thumbs-up me-2"></i>Strengths
+                        </h6>
+                        ${analysis.strengths && analysis.strengths.length > 0 ? 
+                            `<ul class="list-unstyled">
+                                ${analysis.strengths.map(strength => 
+                                    `<li><i class="fas fa-plus text-success me-2"></i>${strength}</li>`
+                                ).join('')}
+                            </ul>` : 
+                            '<p class="text-muted">No specific strengths identified</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recommendations -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-info">
+                            <i class="fas fa-lightbulb me-2"></i>Recommendations
+                        </h6>
+                        ${analysis.recommendations && analysis.recommendations.length > 0 ? 
+                            `<ul class="list-unstyled">
+                                ${analysis.recommendations.map(rec => 
+                                    `<li><i class="fas fa-arrow-right text-info me-2"></i>${rec}</li>`
+                                ).join('')}
+                            </ul>` : 
+                            '<p class="text-muted">No specific recommendations</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detailed Analysis -->
+        ${analysis.detailed_analysis ? `
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Detailed Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Skills Analysis:</h6>
+                            <p class="small">${analysis.detailed_analysis.skills_analysis || 'No analysis available'}</p>
+                            
+                            <h6>Experience Analysis:</h6>
+                            <p class="small">${analysis.detailed_analysis.experience_analysis || 'No analysis available'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Culture Fit:</h6>
+                            <p class="small">${analysis.detailed_analysis.culture_fit || 'No assessment available'}</p>
+                            
+                            <h6>Growth Potential:</h6>
+                            <p class="small">${analysis.detailed_analysis.growth_potential || 'No assessment available'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+        
+        <!-- Summary -->
+        <div class="alert alert-info mt-3">
+            <h6><i class="fas fa-info-circle me-2"></i>Summary</h6>
+            <p class="mb-0">${analysis.summary || 'No summary available'}</p>
+        </div>
+    `;
+}
+
+function generateBasicApplicationHTML(application) {
+        const matchScore = typeof application.match_score === 'number' ? 
+            Math.round(application.match_score * 100) : 'N/A';
+        
+        return `
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <h4>${application.job_title || 'Unknown Job'}</h4>
+                    <h6 class="text-muted">${application.company || 'Unknown Company'}</h6>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="badge bg-${getStatusColor(application.status)} fs-5">${application.status || 'Pending'}</div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">Application Details</div>
+                        <div class="card-body">
+                            <p><strong>Applied on:</strong> ${new Date(application.applied_at).toLocaleDateString()}</p>
+                            <p><strong>Status:</strong> ${application.status || 'Pending'}</p>
+                            <p><strong>Match Score:</strong> ${matchScore}%</p>
+                            ${application.feedback ? `<p><strong>Feedback:</strong> ${application.feedback}</p>` : ''}
+                            ${application.interview_date ? 
+                                `<p><strong>Interview Date:</strong> ${new Date(application.interview_date).toLocaleString()}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">Resume Used</div>
+                        <div class="card-body">
+                            <p><strong>Resume:</strong> ${application.resume_name || 'Unknown'}</p>
+                            ${application.cover_letter ? 
+                                `<div class="mt-3">
+                                    <strong>Cover Letter:</strong>
+                                    <div class="border rounded p-2 mt-1 bg-light">${application.cover_letter}</div>
+                                </div>` : 
+                                '<p>No cover letter submitted</p>'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <i class="fas fa-chart-line me-2"></i>
+                <strong>Match analysis not available.</strong> Click "Analyze Match" to generate detailed analysis for this application.
+                <button class="btn btn-sm btn-primary ms-2" onclick="analyzeApplicationMatch(${application.id})">
+                    Analyze Match
+                </button>
+            </div>
+        `;
+    }
+
+    // Additional helper functions
+    function showAnalytics() {
+        showAlert('Advanced analytics feature coming soon!', 'info');
+    }
+
+    function findQuickMatches() {
+        showAlert('Finding quick job matches...', 'info');
+        // This could redirect to the jobs page with filters applied
+        window.location.href = '/dashboard/jobs';
+    }
+
+    function viewResume(resumeId) {
+        if (!resumeId) {
+            showAlert('Resume not available', 'warning');
+            return;
+        }
+        
+        // Open resume in new tab
+        const token = localStorage.getItem('token');
+        const url = `/api/resumes/${resumeId}/download?token=${encodeURIComponent(token)}`;
+        window.open(url, '_blank');
+    }
+
+    // Show insights options modal
+    async function showInsightsOptions() {
+        try {
+            // Get user's resumes first
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/resumes/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            const data = await response.json();
+            
+            if (!data.resumes || data.resumes.length === 0) {
+                showAlert('Please upload a resume first to get insights.', 'warning');
+                return;
+            }
+            
+            // Create modal with resume selection
+            const modalHtml = `
+                <div class="modal fade" id="insightsOptionsModal" tabindex="-1" aria-labelledby="insightsOptionsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="insightsOptionsModalLabel">
+                                    <i class="fas fa-brain me-2"></i>Get Resume Insights
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <h6 class="mb-3">Select a resume to analyze:</h6>
+                                <div class="row">
+                                    ${data.resumes.map(resume => `
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card insights-option-card h-100" onclick="selectResumeForInsights(${resume.id}, '${resume.filename}')">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-file-alt fa-2x mb-2 text-primary"></i>
+                                                    <h6>${resume.filename}</h6>
+                                                    <small class="text-muted">
+                                                        ${resume.skills ? resume.skills.length : 0} skills detected<br>
+                                                        Uploaded: ${new Date(resume.created_at).toLocaleDateString()}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <hr>
+                                
+                                <h6 class="mb-3">Available Insights:</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-chart-line me-2 text-success"></i>
+                                            <span>Technical Assessment</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-cogs me-2 text-info"></i>
+                                            <span>Skills Analysis</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-briefcase me-2 text-warning"></i>
+                                            <span>Experience Evaluation</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                            <span>Education Assessment</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-lightbulb me-2 text-danger"></i>
+                                            <span>Career Recommendations</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-chart-bar me-2 text-secondary"></i>
+                                            <span>Market Positioning</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('insightsOptionsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('insightsOptionsModal'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('Error loading resumes for insights:', error);
+            showAlert('Could not load resumes. Please try again.', 'danger');
+        }
+    }
+
+    function selectResumeForInsights(resumeId, filename) {
+        // Close the options modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('insightsOptionsModal'));
+        modal.hide();
+        
+        // Show confirmation and start insights generation
+        showAlert(`Generating insights for "${filename}"...`, 'info', 0);
+        
+        // Generate insights
+        setTimeout(() => {
+            getResumeInsights(resumeId);
+        }, 500);
+    }
+</script>
+{% endblock %}

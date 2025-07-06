@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI-Powered ATS{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h2>Welcome to AI-Powered ATS</h2>
+    <p class="lead">Redirecting you to your personalized dashboard...</p>
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const preferredRole = localStorage.getItem('preferredRole');
+    
+    // Redirect based on user role
+    setTimeout(() => {
+        if (!user.id) {
+            // No user logged in
+            window.location.href = '/login';
+        } else if (!user.role) {
+            // User logged in but no role selected yet
+            
+            // Check if we have a preferred role stored
+            if (preferredRole && (preferredRole === 'candidate' || preferredRole === 'hr')) {
+                // Call the API to update their role
+                updateUserRole(preferredRole);
+            } else {
+                // No preferred role, go to role selection page
+                window.location.href = '/select-role';
+            }
+        } else if (user.role === 'hr') {
+            window.location.href = '/hr';
+        } else if (user.role === 'candidate') {
+            window.location.href = '/candidate';
+        } else {
+            window.location.href = '/login';
+        }
+    }, 1000);
+});
+
+async function updateUserRole(role) {
+    const token = localStorage.getItem('token');
+    
+    try {
+        const response = await fetch('/api/auth/update-role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ role })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Update user in localStorage
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Redirect based on the updated role
+            if (data.user.role === 'hr') {
+                window.location.href = '/hr';
+            } else {
+                window.location.href = '/candidate';
+            }
+        } else {
+            // If there's an error, go to the role selection page
+            window.location.href = '/select-role';
+        }
+    } catch (error) {
+        console.error('Error updating role:', error);
+        window.location.href = '/select-role';
+    }
+}
+</script>
+{% endblock %}
