@@ -128,6 +128,18 @@ def upload_resume():
         db.session.add(resume)
         db.session.commit()
         
+        # Auto-sync to vector database
+        try:
+            from rag_service import RAGTalentService
+            rag_service = RAGTalentService()
+            sync_success = rag_service.auto_sync_resume(resume, 'create')
+            if sync_success:
+                current_app.logger.info(f"Resume {resume.id} synced to vector database")
+            else:
+                current_app.logger.warning(f"Failed to sync resume {resume.id} to vector database")
+        except Exception as sync_error:
+            current_app.logger.error(f"Vector database sync error: {sync_error}")
+        
         # Broadcast real-time update to user
         try:
             from realtime_service import broadcast_dashboard_update
@@ -235,6 +247,18 @@ def delete_resume(resume_id):
         if os.path.exists(resume.file_path):
             os.remove(resume.file_path)
         
+        # Auto-sync deletion to vector database
+        try:
+            from rag_service import RAGTalentService
+            rag_service = RAGTalentService()
+            sync_success = rag_service.auto_sync_resume(resume, 'delete')
+            if sync_success:
+                current_app.logger.info(f"Resume {resume.id} removed from vector database")
+            else:
+                current_app.logger.warning(f"Failed to remove resume {resume.id} from vector database")
+        except Exception as sync_error:
+            current_app.logger.error(f"Vector database sync error during deletion: {sync_error}")
+        
         db.session.delete(resume)
         db.session.commit()
         
@@ -255,21 +279,34 @@ def get_resume_insights(resume_id):
     try:
         from resume_insights_service import resume_insights_service
         
+        # Get analysis type from query parameter (enhanced, standard)
+        analysis_type = request.args.get('type', 'standard')
+        
         # Get the resume and verify ownership
         resume = Resume.query.get(resume_id)
         if not resume:
             return jsonify({'error': 'Resume not found'}), 404
+        
+        # Get current user    
+        user = User.query.get(request.current_user_id)
+        if not user:
+            return jsonify({'error': 'Authentication required'}), 401
             
-        # Verify user owns this resume
-        if resume.user_id != request.current_user_id:
+        # Verify permissions - user owns resume OR HR can access any
+        if user.role != 'hr' and resume.user_id != user.id:
             return jsonify({'error': 'You do not have permission to access this resume'}), 403
             
         # Check if resume has been parsed
         if not resume.parsed_data and not resume.raw_text:
             return jsonify({'error': 'Resume has not been processed yet. Please wait for parsing to complete.'}), 400
         
-        # Generate insights using the service
-        result = resume_insights_service.generate_insights(resume.to_dict())
+        # Generate insights using the appropriate service method
+        if analysis_type == 'enhanced' and user.role == 'hr':
+            # Use enhanced critical analysis for HR users
+            result = resume_insights_service.generate_insights(resume.to_dict())
+        else:
+            # Use standard analysis
+            result = resume_insights_service.generate_insights(resume.to_dict())
         
         if not result.get('success'):
             return jsonify({
@@ -280,6 +317,7 @@ def get_resume_insights(resume_id):
         return jsonify({
             'success': True,
             'resume_id': resume_id,
+            'analysis_type': analysis_type,
             'insights': result['insights']
         }), 200
         
@@ -403,4 +441,111 @@ def compare_resume_with_job(resume_id):
         return jsonify({
             'success': False,
             'error': 'Failed to generate job comparison. Please try again later.'
+        }), 500
+
+@resumes_bp.route('/<int:resume_id>', methods=['PUT'])
+@require_auth
+def update_resume(resume_id):
+    """Update resume data (skills, experience, education, etc.)"""
+    try:
+        resume = Resume.query.filter_by(
+            id=resume_id, 
+            user_id=request.current_user_id
+        ).first()
+        
+        if not resume:
+            return jsonify({'error': 'Resume not found'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Update allowed fields
+        if 'name' in data:
+            resume.name = data['name']
+        if 'email' in data:
+            resume.email = data['email']
+        if 'phone' in data:
+            resume.phone = data['phone']
+        if 'skills' in data:
+            resume.skills = data['skills']
+        if 'experience' in data:
+            resume.experience = data['experience']
+        if 'education' in data:
+            resume.education = data['education']
+        
+        # Update parsed_data if provided
+        if 'parsed_data' in data:
+            resume.parsed_data = data['parsed_data']
+        
+        resume.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Auto-sync update to vector database
+        try:
+            from rag_service import RAGTalentService
+            rag_service = RAGTalentService()
+            sync_success = rag_service.auto_sync_resume(resume, 'update')
+            if sync_success:
+                current_app.logger.info(f"Resume {resume.id} updated in vector database")
+            else:
+                current_app.logger.warning(f"Failed to update resume {resume.id} in vector database")
+        except Exception as sync_error:
+            current_app.logger.error(f"Vector database sync error during update: {sync_error}")
+        
+        return jsonify({
+            'message': 'Resume updated successfully',
+            'resume': resume.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@resumes_bp.route('/<int:resume_id>/technical-assessment', methods=['GET'])
+@require_auth
+def get_technical_assessment(resume_id):
+    """Generate ultra-detailed technical assessment for a resume using enhanced AI analysis"""
+    try:
+        from resume_insights_service import resume_insights_service
+        
+        # Get the resume
+        resume = Resume.query.get_or_404(resume_id)
+        
+        # Check authorization - user can only analyze their own resumes or HR can analyze any
+        user = User.query.get(request.current_user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+            
+        if user.role != 'hr' and resume.user_id != user.id:
+            return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
+        
+        # Generate technical assessment using the enhanced service
+        result = resume_insights_service.generate_technical_assessment(resume.to_dict())
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to generate technical assessment')
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'resume_id': resume_id,
+            'technical_assessment': result['technical_assessment']
+        })
+        
+    except ImportError:
+        current_app.logger.error("Resume insights service not available - missing dependencies")
+        return jsonify({
+            'success': False,
+            'error': 'Technical assessment feature is not available. Please contact support.'
+        }), 503
+        
+    except Exception as e:
+        current_app.logger.error(f"Error generating technical assessment: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Failed to generate technical assessment. Please try again later.'
         }), 500

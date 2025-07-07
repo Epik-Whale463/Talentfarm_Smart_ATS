@@ -595,6 +595,12 @@
                         </a>
                     </li>
                 </ul>
+                <div class="navbar-nav me-3">
+                    <!-- Connection Status Indicator -->
+                    <span id="connectionStatus" class="badge bg-secondary small">
+                        <i class="fas fa-circle me-1"></i>Connecting...
+                    </span>
+                </div>
                 <ul class="navbar-nav" id="navbarUser">
                     <!-- Populated by JavaScript -->
                 </ul>
@@ -725,6 +731,9 @@
             `;
         }
     </script>
+    
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     {% block scripts %}{% endblock %}
 </body>

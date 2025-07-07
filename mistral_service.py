@@ -4,6 +4,10 @@ from mistralai import Mistral
 from config import Config
 import PyPDF2
 
+def get_mistral_client():
+    """Get configured Mistral client instance"""
+    return Mistral(api_key=Config.MISTRAL_API_KEY)
+
 class MistralOCRService:
     """
     Service class for Mistral AI resume parsing

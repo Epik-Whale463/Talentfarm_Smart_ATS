@@ -568,6 +568,11 @@ def require_auth(f):
     """Decorator to require authentication for routes"""
     def decorated_function(*args, **kwargs):
         token = request.headers.get('Authorization')
+        
+        # If no token in header, check query parameters (for file downloads)
+        if not token:
+            token = request.args.get('token')
+        
         if not token:
             return jsonify({'error': 'No token provided'}), 401
         

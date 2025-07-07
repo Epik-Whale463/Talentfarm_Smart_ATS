@@ -1914,3 +1914,341 @@ async function downloadResume(resumeId) {
         showAlert('Failed to download resume. Please try again.', 'danger');
     }
 }
+
+// Real-time WebSocket Connection Manager
+class RealTimeManager {
+    constructor() {
+        this.socket = null;
+        this.isConnected = false;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000;
+        this.token = localStorage.getItem('token');
+        this.userId = null;
+        this.callbacks = new Map();
+        
+        // Initialize connection if user is authenticated
+        if (this.token) {
+            this.connect();
+        }
+    }
+    
+    connect() {
+        try {
+            // Initialize Socket.IO connection
+            this.socket = io({
+                auth: {
+                    token: this.token
+                },
+                query: {
+                    token: this.token
+                }
+            });
+            
+            this.setupEventListeners();
+            
+        } catch (error) {
+            console.error('Failed to initialize WebSocket connection:', error);
+        }
+    }
+    
+    setupEventListeners() {
+        if (!this.socket) return;
+        
+        this.socket.on('connect', () => {
+            console.log('Connected to real-time service');
+            this.isConnected = true;
+            this.reconnectAttempts = 0;
+            
+            // Join user-specific room
+            this.socket.emit('join_user_room', { token: this.token });
+            
+            // Show connection status
+            this.showConnectionStatus('Connected', 'success');
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from real-time service');
+            this.isConnected = false;
+            this.showConnectionStatus('Disconnected', 'warning');
+            
+            // Attempt reconnection
+            this.attemptReconnect();
+        });
+        
+        this.socket.on('error', (error) => {
+            console.error('WebSocket error:', error);
+            this.showConnectionStatus('Connection Error', 'danger');
+        });
+        
+        // Dashboard updates
+        this.socket.on('dashboard_update', (data) => {
+            this.handleDashboardUpdate(data);
+        });
+        
+        // Application status updates
+        this.socket.on('application_status_update', (data) => {
+            this.handleApplicationUpdate(data);
+        });
+        
+        // Interview notifications
+        this.socket.on('interview_scheduled', (data) => {
+            this.handleInterviewNotification(data);
+        });
+        
+        // New job notifications
+        this.socket.on('new_job_posted', (data) => {
+            this.handleNewJobNotification(data);
+        });
+        
+        // Resume analysis completed
+        this.socket.on('resume_analysis_complete', (data) => {
+            this.handleResumeAnalysisComplete(data);
+        });
+        
+        // Talent search results
+        this.socket.on('talent_search_update', (data) => {
+            this.handleTalentSearchUpdate(data);
+        });
+    }
+    
+    attemptReconnect() {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            const delay = this.reconnectDelay * this.reconnectAttempts;
+            
+            console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            
+            setTimeout(() => {
+                if (this.socket) {
+                    this.socket.connect();
+                }
+            }, delay);
+        } else {
+            this.showConnectionStatus('Connection Failed', 'danger');
+            console.error('Max reconnection attempts reached');
+        }
+    }
+    
+    showConnectionStatus(message, type) {
+        // Update UI connection indicator if it exists
+        const indicator = document.getElementById('connectionStatus');
+        if (indicator) {
+            indicator.className = `badge bg-${type}`;
+            indicator.textContent = message;
+        }
+        
+        // Also show as alert for important status changes
+        if (type === 'danger' || type === 'warning') {
+            showAlert(`Real-time service: ${message}`, type, 3000);
+        }
+    }
+    
+    handleDashboardUpdate(data) {
+        console.log('Dashboard update received:', data);
+        
+        // Update dashboard stats if on dashboard page
+        if (window.location.pathname.includes('dashboard') || window.location.pathname === '/') {
+            this.updateDashboardStats(data);
+        }
+        
+        // Trigger custom callbacks
+        this.triggerCallbacks('dashboard_update', data);
+    }
+    
+    handleApplicationUpdate(data) {
+        console.log('Application status update:', data);
+        
+        // Show notification
+        showAlert(
+            `Application status updated: ${data.status}`, 
+            'info', 
+            5000
+        );
+        
+        // Update applications list if on applications page
+        if (window.location.pathname.includes('applications')) {
+            this.refreshApplicationsList();
+        }
+        
+        this.triggerCallbacks('application_update', data);
+    }
+    
+    handleInterviewNotification(data) {
+        console.log('Interview notification:', data);
+        
+        // Show notification
+        showAlert(
+            `Interview scheduled: ${data.title} on ${new Date(data.scheduled_at).toLocaleString()}`,
+            'success',
+            8000
+        );
+        
+        // Update interviews list if on interviews page  
+        if (window.location.pathname.includes('interview')) {
+            this.refreshInterviewsList();
+        }
+        
+        this.triggerCallbacks('interview_notification', data);
+    }
+    
+    handleNewJobNotification(data) {
+        console.log('New job posted:', data);
+        
+        // Show notification for candidates
+        if (data.target_role === 'candidate') {
+            showAlert(
+                `New job posted: ${data.job_title} at ${data.company}`,
+                'info',
+                6000
+            );
+        }
+        
+        // Refresh jobs list if on jobs page
+        if (window.location.pathname.includes('jobs')) {
+            this.refreshJobsList();
+        }
+        
+        this.triggerCallbacks('new_job', data);
+    }
+    
+    handleResumeAnalysisComplete(data) {
+        console.log('Resume analysis complete:', data);
+        
+        showAlert(
+            'Your resume analysis is complete! Check your insights.',
+            'success',
+            5000
+        );
+        
+        this.triggerCallbacks('resume_analysis_complete', data);
+    }
+    
+    handleTalentSearchUpdate(data) {
+        console.log('Talent search update:', data);
+        
+        // Update search results if on talent search page
+        if (window.location.pathname.includes('talent-search') || 
+            window.location.pathname.includes('hr')) {
+            this.updateTalentSearchResults(data);
+        }
+        
+        this.triggerCallbacks('talent_search_update', data);
+    }
+    
+    // Helper methods for UI updates
+    updateDashboardStats(data) {
+        // Update various dashboard counters
+        const statsElements = {
+            'totalResumes': data.total_resumes,
+            'totalApplications': data.total_applications,
+            'pendingApplications': data.pending_applications,
+            'totalJobs': data.total_jobs,
+            'activeJobs': data.active_jobs,
+            'totalInterviews': data.total_interviews
+        };
+        
+        Object.entries(statsElements).forEach(([elementId, value]) => {
+            const element = document.getElementById(elementId);
+            if (element && value !== undefined) {
+                element.textContent = value;
+            }
+        });
+    }
+    
+    refreshApplicationsList() {
+        // Refresh applications if the function exists
+        if (typeof loadApplications === 'function') {
+            loadApplications();
+        }
+    }
+    
+    refreshInterviewsList() {
+        // Refresh interviews if the function exists
+        if (typeof loadInterviews === 'function') {
+            loadInterviews();
+        }
+    }
+    
+    refreshJobsList() {
+        // Refresh jobs if the function exists
+        if (typeof loadJobs === 'function') {
+            loadJobs();
+        }
+    }
+    
+    updateTalentSearchResults(data) {
+        // Update talent search results if the function exists
+        if (typeof updateSearchResults === 'function') {
+            updateSearchResults(data);
+        }
+    }
+    
+    // Public API for registering callbacks
+    onEvent(eventType, callback) {
+        if (!this.callbacks.has(eventType)) {
+            this.callbacks.set(eventType, []);
+        }
+        this.callbacks.get(eventType).push(callback);
+    }
+    
+    triggerCallbacks(eventType, data) {
+        const callbacks = this.callbacks.get(eventType);
+        if (callbacks) {
+            callbacks.forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error(`Error in ${eventType} callback:`, error);
+                }
+            });
+        }
+    }
+    
+    // Emit events to server
+    emit(eventType, data) {
+        if (this.socket && this.isConnected) {
+            this.socket.emit(eventType, data);
+        } else {
+            console.warn('Socket not connected, cannot emit:', eventType);
+        }
+    }
+    
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
+            this.isConnected = false;
+        }
+    }
+    
+    // Update token for authentication
+    updateToken(token) {
+        this.token = token;
+        localStorage.setItem('token', token);
+        
+        // Reconnect with new token
+        if (this.socket) {
+            this.disconnect();
+            this.connect();
+        }
+    }
+}
+
+// Global real-time manager instance
+let realTimeManager = null;
+
+// Initialize real-time connection when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if user is authenticated
+    const token = localStorage.getItem('token');
+    if (token) {
+        realTimeManager = new RealTimeManager();
+        
+        // Make it globally available
+        window.realTimeManager = realTimeManager;
+    }
+});
+
+// Export for use in other scripts
+window.RealTimeManager = RealTimeManager;

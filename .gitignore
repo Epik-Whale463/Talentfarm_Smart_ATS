@@ -300,5 +300,15 @@ migrations/versions/*.py
 *.db-wal
 *.db-shm
 
+labs.ipynb
+system_health_check.py
+quick_clear.py
+seed_jobs.py
+sync_to_vector_db.py
+talent_search_service_backup.py
+.env.example
+ats.db
+
+
 PROJECT_IMPLEMENTATION_REPORT.md
 PROJECT_SUMMARY_REPORT.md

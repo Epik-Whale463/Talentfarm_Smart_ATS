@@ -1312,6 +1312,9 @@ function displayRecentResumes(resumes) {
                     </small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); viewResumeFile(${resume.id})" title="View Resume">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); getResumeInsights(${resume.id})" title="Get AI Insights">
                         <i class="fas fa-brain"></i>
                     </button>
@@ -1591,6 +1594,56 @@ async function withdrawApplication(applicationId) {
     }
 }
 
+// Resume viewing functionality
+async function viewResumeFile(resumeId) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/resumes/${resumeId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const resume = data.resume;
+            const parsedData = resume.parsed_data || {};
+            
+            // Create a simple display of resume data
+            let resumeInfo = `Resume: ${resume.filename}\n\n`;
+            
+            if (parsedData.name) {
+                resumeInfo += `Name: ${parsedData.name}\n`;
+            }
+            if (parsedData.email) {
+                resumeInfo += `Email: ${parsedData.email}\n`;
+            }
+            if (parsedData.phone) {
+                resumeInfo += `Phone: ${parsedData.phone}\n`;
+            }
+            if (parsedData.skills && parsedData.skills.length > 0) {
+                resumeInfo += `\nSkills: ${parsedData.skills.join(', ')}\n`;
+            }
+            if (parsedData.experience && parsedData.experience.length > 0) {
+                resumeInfo += `\nExperience:\n`;
+                parsedData.experience.forEach((exp, index) => {
+                    resumeInfo += `${index + 1}. ${exp.title || 'Position'} at ${exp.company || 'Company'}\n`;
+                });
+            }
+            
+            // Show in a more user-friendly way - navigate to resumes page
+            showAlert('Resume details loaded. Redirecting to full resume view...', 'info');
+            setTimeout(() => {
+                window.location.href = '/resumes';
+            }, 1500);
+            
+        } else {
+            showAlert('Failed to load resume details', 'danger');
+        }
+    } catch (error) {
+        console.error('Error viewing resume:', error);
+        showAlert('Failed to load resume details', 'danger');
+    }
+}
+
 // Resume Insights functionality
 async function getResumeInsights(resumeId) {
     try {
@@ -1667,6 +1720,262 @@ function displayInsightsModal(insights) {
 }
 
 function generateInsightsHTML(insights) {
+    let html = '';
+    
+    console.log('Candidate Dashboard - Insights data:', insights); // Debug log
+    
+    // Handle both old and new format
+    const llmAnalysis = insights.llm_analysis || insights;
+    
+    // Executive Summary
+    if (llmAnalysis.executive_summary) {
+        html += `
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Executive Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div class="display-4 text-primary">${llmAnalysis.executive_summary.overall_score || 'N/A'}/10</div>
+                            <small class="text-muted">Overall Score</small>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="h4 text-${getScoreColor(llmAnalysis.executive_summary.technical_level)}">${llmAnalysis.executive_summary.technical_level || 'N/A'}</div>
+                            <small class="text-muted">Technical Level</small>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="h4 text-${getRecommendationColor(llmAnalysis.executive_summary.hire_confidence)}">${llmAnalysis.executive_summary.hire_confidence || 'N/A'}</div>
+                            <small class="text-muted">Hire Confidence</small>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="h5 text-${getRiskColor(llmAnalysis.executive_summary.risk_level)}">${llmAnalysis.executive_summary.risk_level || 'N/A'}</div>
+                            <small class="text-muted">Risk Level</small>
+                        </div>
+                    </div>
+                    ${llmAnalysis.executive_summary.summary ? `
+                    <hr>
+                    <div class="alert alert-light">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Key Insights</h6>
+                        <p class="mb-0">${escapeHtml(llmAnalysis.executive_summary.summary)}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Deep Technical Analysis - Simplified for candidates
+    if (llmAnalysis.deep_technical_analysis) {
+        const techAnalysis = llmAnalysis.deep_technical_analysis;
+        
+        html += `
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-code me-2"></i>Technical Skills Assessment</h6>
+                </div>
+                <div class="card-body">
+        `;
+        
+        // Core Skills Assessment - Candidate-friendly view
+        if (techAnalysis.core_skills && techAnalysis.core_skills.length > 0) {
+            html += `
+                <div class="mb-4">
+                    <h6><i class="fas fa-cogs me-2"></i>Your Technical Skills</h6>
+                    <div class="row">
+            `;
+            
+            techAnalysis.core_skills.forEach(skill => {
+                const verdictClass = getVerdictBadgeClass(skill.verdict);
+                const evidenceClass = getEvidenceQualityClass(skill.evidence_quality);
+                
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">${escapeHtml(skill.skill || 'Unknown Skill')}</h6>
+                                <span class="badge ${verdictClass}">${skill.verdict || 'N/A'}</span>
+                            </div>
+                            <div class="small mb-2">
+                                <strong>Your Level:</strong> ${escapeHtml(skill.assessed_level || 'N/A')}
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge ${evidenceClass} small">Evidence Quality: ${skill.evidence_quality || 'N/A'}</span>
+                            </div>
+                            ${skill.depth_indicators && skill.depth_indicators.length > 0 ? `
+                            <div class="small text-success mb-1">
+                                <strong>Strengths:</strong> ${skill.depth_indicators.join(', ')}
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        }
+        
+        // Code Quality Indicators
+        if (techAnalysis.code_quality_indicators) {
+            const quality = techAnalysis.code_quality_indicators;
+            html += `
+                <div class="mb-3">
+                    <h6><i class="fas fa-check-circle me-2"></i>Professional Development Areas</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <strong>Testing & Quality:</strong> ${escapeHtml(quality.testing_practices || 'N/A')}<br>
+                                <strong>Documentation:</strong> ${escapeHtml(quality.documentation_habits || 'N/A')}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <strong>Code Review:</strong> ${escapeHtml(quality.code_review_experience || 'N/A')}<br>
+                                <strong>Best Practices:</strong> ${escapeHtml(quality.technical_debt_awareness || 'N/A')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // Development Roadmap - Candidate Focus
+    if (llmAnalysis.development_roadmap) {
+        const roadmap = llmAnalysis.development_roadmap;
+        html += `
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-road me-2"></i>Your Development Path</h6>
+                </div>
+                <div class="card-body">
+        `;
+        
+        // Growth Potential
+        if (roadmap.growth_potential) {
+            const growth = roadmap.growth_potential;
+            html += `
+                <div class="mb-4">
+                    <h6><i class="fas fa-chart-line me-2"></i>Growth Outlook</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 text-center">
+                                <div class="h4 text-${getTrajectoryColor(growth.trajectory)}">${escapeHtml(growth.trajectory || 'N/A')}</div>
+                                <small class="text-muted">Career Trajectory</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 text-center">
+                                <div class="h5 text-info">${escapeHtml(growth.ceiling || 'N/A')}</div>
+                                <small class="text-muted">Potential Level</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p><strong>Learning Ability:</strong> ${escapeHtml(growth.learning_velocity || 'N/A')}</p>
+                        <p><strong>Adaptability:</strong> ${escapeHtml(growth.adaptability || 'N/A')}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Immediate Gaps - Presented as development opportunities
+        if (roadmap.immediate_gaps && roadmap.immediate_gaps.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <h6><i class="fas fa-target me-2"></i>Development Opportunities</h6>
+                    <div class="row">
+            `;
+            
+            roadmap.immediate_gaps.slice(0, 4).forEach(gap => {
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h6 class="text-primary">${escapeHtml(gap.gap || 'Unknown Gap')}</h6>
+                            <div class="small mb-2">
+                                <strong>Impact:</strong> ${escapeHtml(gap.business_impact || 'N/A')}
+                            </div>
+                            <div class="small">
+                                <strong>Time Investment:</strong> ${escapeHtml(gap.time_to_fill || 'N/A')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // Skill Verification - Positive focus for candidates
+    if (llmAnalysis.skill_verification) {
+        const verification = llmAnalysis.skill_verification;
+        
+        html += `
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Skill Validation</h6>
+                </div>
+                <div class="card-body">
+        `;
+        
+        // Show verified skills
+        if (verification.verified_skills && verification.verified_skills.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <h6><i class="fas fa-check-circle me-2 text-success"></i>Verified Skills</h6>
+                    <div class="d-flex flex-wrap gap-2">
+            `;
+            
+            verification.verified_skills.forEach(skill => {
+                html += `<span class="badge bg-success">${escapeHtml(skill)}</span>`;
+            });
+            
+            html += `</div></div>`;
+        }
+        
+        // Show unverified skills as areas to strengthen
+        if (verification.unverified_claims && verification.unverified_claims.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Areas to Strengthen</h6>
+                    <div class="d-flex flex-wrap gap-2">
+            `;
+            
+            verification.unverified_claims.forEach(skill => {
+                html += `<span class="badge bg-warning text-dark">${escapeHtml(skill)}</span>`;
+            });
+            
+            html += `</div></div>`;
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // Fallback for old format or incomplete data
+    if (!html || html.trim() === '') {
+        // Try old format
+        if (insights.technical_assessment || insights.skills_analysis || insights.strengths) {
+            html = generateOldFormatHTML(insights);
+        } else {
+            html = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Resume Analysis</h6>
+                    <p class="mb-0">Your resume has been analyzed. The detailed insights may still be processing.</p>
+                </div>
+            `;
+        }
+    }
+    
+    return html;
+}
+
+// Helper function for old format compatibility
+function generateOldFormatHTML(insights) {
     let html = '';
     
     // Technical Assessment Overview
@@ -1770,15 +2079,15 @@ function generateInsightsHTML(insights) {
                 <div class="col-md-6">
                     <div class="card h-100">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Recommendations</h6>
+                            <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Development Areas</h6>
                         </div>
                         <div class="card-body">
         `;
         
         if (insights.recommendations && insights.recommendations.immediate_improvements) {
             insights.recommendations.immediate_improvements.forEach(improvement => {
-                const priorityClass = improvement.priority === 'High' ? 'danger' : 
-                                    improvement.priority === 'Medium' ? 'warning' : 'info';
+                const priorityClass = improvement.priority === 'High' ? 'info' : 
+                                    improvement.priority === 'Medium' ? 'secondary' : 'light';
                 html += `
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
@@ -1799,38 +2108,6 @@ function generateInsightsHTML(insights) {
         `;
     }
     
-    // Market Positioning
-    if (insights.market_positioning) {
-        const positioning = insights.market_positioning;
-        html += `
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Market Positioning</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <h6>Experience Level</h6>
-                            <span class="badge bg-primary">${positioning.experience_level}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <h6>Market Demand</h6>
-                            <span class="badge bg-${positioning.market_demand === 'High' ? 'success' : positioning.market_demand === 'Medium' ? 'warning' : 'secondary'}">${positioning.market_demand}</span>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Suitable Roles</h6>
-                            <div>
-                                ${positioning.suitable_roles ? positioning.suitable_roles.map(role => `<span class="badge bg-outline-secondary me-1">${role}</span>`).join('') : ''}
-                            </div>
-                        </div>
-                    </div>
-                    ${positioning.salary_range_estimate ? `<p class="mt-3"><strong>Estimated Salary Range:</strong> ${positioning.salary_range_estimate}</p>` : ''}
-                    ${positioning.competitive_advantage ? `<p><strong>Competitive Advantage:</strong> ${positioning.competitive_advantage}</p>` : ''}
-                </div>
-            </div>
-        `;
-    }
-    
     return html;
 }
 
@@ -1842,6 +2119,89 @@ function getProficiencyBadgeClass(proficiency) {
         case 'beginner': return 'bg-secondary';
         default: return 'bg-info';
     }
+}
+
+function getScoreColor(level) {
+    if (typeof level === 'string') {
+        switch (level.toLowerCase()) {
+            case 'senior': case 'expert': case 'lead': return 'success';
+            case 'mid': case 'intermediate': case 'advanced': return 'primary';
+            case 'junior': case 'beginner': return 'warning';
+            default: return 'info';
+        }
+    }
+    return 'info';
+}
+
+function getRecommendationColor(decision) {
+    if (typeof decision === 'string') {
+        switch (decision.toLowerCase()) {
+            case 'strong yes': case 'yes': case 'high': return 'success';
+            case 'maybe': case 'medium': return 'warning';
+            case 'no': case 'strong no': case 'low': return 'danger';
+            default: return 'info';
+        }
+    }
+    return 'info';
+}
+
+function getRiskColor(level) {
+    if (typeof level === 'string') {
+        switch (level.toLowerCase()) {
+            case 'low': return 'success';
+            case 'medium': return 'warning';
+            case 'high': case 'critical': return 'danger';
+            default: return 'info';
+        }
+    }
+    return 'info';
+}
+
+function getVerdictBadgeClass(verdict) {
+    if (typeof verdict === 'string') {
+        switch (verdict.toLowerCase()) {
+            case 'expert': return 'bg-success';
+            case 'proficient': return 'bg-primary';
+            case 'competent': return 'bg-info';
+            case 'novice': return 'bg-warning';
+            case 'unproven': return 'bg-secondary';
+            default: return 'bg-light text-dark';
+        }
+    }
+    return 'bg-light text-dark';
+}
+
+function getEvidenceQualityClass(quality) {
+    if (typeof quality === 'string') {
+        switch (quality.toLowerCase()) {
+            case 'strong': return 'bg-success';
+            case 'moderate': return 'bg-primary';
+            case 'weak': return 'bg-warning';
+            case 'no evidence': return 'bg-danger';
+            default: return 'bg-secondary';
+        }
+    }
+    return 'bg-secondary';
+}
+
+function getTrajectoryColor(trajectory) {
+    if (typeof trajectory === 'string') {
+        switch (trajectory.toLowerCase()) {
+            case 'high-growth': return 'success';
+            case 'steady': return 'primary';
+            case 'stagnant': return 'warning';
+            case 'declining': return 'danger';
+            default: return 'info';
+        }
+    }
+    return 'info';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function downloadInsightsReport(insights) {

@@ -222,6 +222,18 @@ def create_job():
         db.session.add(job)
         db.session.commit()
         
+        # Auto-sync to vector database
+        try:
+            from rag_service import RAGTalentService
+            rag_service = RAGTalentService()
+            sync_success = rag_service.auto_sync_job(job, 'create')
+            if sync_success:
+                logger.info(f"Job {job.id} synced to vector database")
+            else:
+                logger.warning(f"Failed to sync job {job.id} to vector database")
+        except Exception as sync_error:
+            logger.error(f"Vector database sync error: {sync_error}")
+        
         # Notify the frontend about success
         try:
             from realtime_service import broadcast_dashboard_update
@@ -644,6 +656,18 @@ def update_job(job_id):
         # Save changes to database
         db.session.commit()
         
+        # Auto-sync update to vector database
+        try:
+            from rag_service import RAGTalentService
+            rag_service = RAGTalentService()
+            sync_success = rag_service.auto_sync_job(job, 'update')
+            if sync_success:
+                logger.info(f"Job {job.id} updated in vector database")
+            else:
+                logger.warning(f"Failed to update job {job.id} in vector database")
+        except Exception as sync_error:
+            logger.error(f"Vector database sync error during job update: {sync_error}")
+        
         # Notify about update
         try:
             from realtime_service import broadcast_dashboard_update
@@ -747,9 +771,34 @@ def delete_job(job_id):
             job.updated_at = datetime.utcnow()
             db.session.commit()
             
+            # Auto-sync update to vector database (soft delete)
+            try:
+                from rag_service import RAGTalentService
+                rag_service = RAGTalentService()
+                sync_success = rag_service.auto_sync_job(job, 'update')
+                if sync_success:
+                    logger.info(f"Job {job.id} soft-deleted in vector database")
+                else:
+                    logger.warning(f"Failed to soft-delete job {job.id} in vector database")
+            except Exception as sync_error:
+                logger.error(f"Vector database sync error during job soft-delete: {sync_error}")
+            
             deletion_type = "deactivated"
         else:
             # Hard delete - remove from database
+            
+            # Auto-sync deletion to vector database first
+            try:
+                from rag_service import RAGTalentService
+                rag_service = RAGTalentService()
+                sync_success = rag_service.auto_sync_job(job, 'delete')
+                if sync_success:
+                    logger.info(f"Job {job.id} removed from vector database")
+                else:
+                    logger.warning(f"Failed to remove job {job.id} from vector database")
+            except Exception as sync_error:
+                logger.error(f"Vector database sync error during job deletion: {sync_error}")
+            
             # Find all applications for this job
             applications = Application.query.filter_by(job_id=job.id).all()
             
@@ -1378,57 +1427,189 @@ def list_hr_applications():
             'message': 'Error retrieving applications'
         }), 500
 
+@jobs_bp.route('/applications/all', methods=['GET'])
+@require_auth
+def get_all_applications():
+    """Get all applications across all jobs for HR users, with advanced filtering"""
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'Access denied. HR role required.'}), 403
+        
+        # Get pagination and filter parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        status = request.args.get('status')
+        job_id = request.args.get('job_id', type=int)
+        search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'applied_at')
+        order = request.args.get('order', 'desc')
+        
+        # Base query - only applications for jobs created by this HR user
+        query = db.session.query(Application).join(Job).filter(Job.created_by == user.id)
+        
+        # Apply filters
+        if status:
+            query = query.filter(Application.status == status)
+        if job_id:
+            query = query.filter(Application.job_id == job_id)
+        if search:
+            search_term = f"%{search}%"
+            query = query.join(Resume).join(User).filter(
+                or_(
+                    User.github_username.ilike(search_term),
+                    User.email.ilike(search_term),
+                    Resume.filename.ilike(search_term),
+                    Job.title.ilike(search_term),
+                    Job.company.ilike(search_term)
+                )
+            )
+        
+        # Apply sorting
+        if sort_by == 'applied_at':
+            if order == 'desc':
+                query = query.order_by(desc(Application.created_at))
+            else:
+                query = query.order_by(Application.created_at)
+        elif sort_by == 'status':
+            if order == 'desc':
+                query = query.order_by(desc(Application.status))
+            else:
+                query = query.order_by(Application.status)
+        elif sort_by == 'job_title':
+            if order == 'desc':
+                query = query.order_by(desc(Job.title))
+            else:
+                query = query.order_by(Job.title)
+        
+        # Paginate results
+        applications_paginated = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format application data
+        applications_data = []
+        for application in applications_paginated.items:
+            app_data = {
+                'id': application.id,
+                'job_id': application.job_id,
+                'job_title': application.job.title,
+                'job_company': application.job.company,
+                'job_location': application.job.location,
+                'resume_id': application.resume_id,
+                'resume_filename': application.resume.filename if application.resume else None,
+                'applicant': {
+                    'id': application.resume.user_id if application.resume else None,
+                    'name': application.resume.user.name if application.resume and application.resume.user else 'Unknown',
+                    'username': application.resume.user.github_username if application.resume and application.resume.user else None,
+                    'email': application.resume.user.email if application.resume and application.resume.user else None
+                },
+                # Add fields that the frontend expects
+                'candidate_name': application.resume.user.name if application.resume and application.resume.user else 'Unknown',
+                'candidate_email': application.resume.user.email if application.resume and application.resume.user else '',
+                'status': application.status,
+                'applied_at': application.created_at.isoformat() if application.created_at else None,
+                'updated_at': application.updated_at.isoformat() if application.updated_at else None
+            }
+            applications_data.append(app_data)
+        
+        # Get summary statistics
+        total_applications = query.count()
+        status_counts = db.session.query(
+            Application.status, 
+            func.count(Application.id)
+        ).join(Job).filter(
+            Job.created_by == user.id
+        ).group_by(Application.status).all()
+        
+        return jsonify({
+            'success': True,
+            'applications': applications_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': applications_paginated.total,
+                'pages': applications_paginated.pages,
+                'has_next': applications_paginated.has_next,
+                'has_prev': applications_paginated.has_prev
+            },
+            'summary': {
+                'total_applications': total_applications,
+                'status_breakdown': {status: count for status, count in status_counts}
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting all applications: {e}")
+        return jsonify({'error': 'Failed to get applications'}), 500
+
 @jobs_bp.route('/applications/<int:application_id>', methods=['GET'])
 @require_auth
 def get_application_details(application_id):
     """Get detailed information about a specific application"""
     try:
-        # Get the application with related job and resume data
-        application = db.session.query(Application)\
-            .join(Resume, Application.resume_id == Resume.id)\
-            .join(Job, Application.job_id == Job.id)\
-            .filter(Application.id == application_id)\
-            .filter(Resume.user_id == request.current_user_id)\
-            .first()
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'Access denied. HR role required.'}), 403
+        
+        # Get the application - make sure it's for a job created by this HR user
+        application = db.session.query(Application).join(Job).filter(
+            Application.id == application_id,
+            Job.created_by == user.id
+        ).first()
         
         if not application:
-            return jsonify({'error': 'Application not found or access denied'}), 404
+            return jsonify({'error': 'Application not found'}), 404
         
-        # Build comprehensive application data
-        app_data = {
+        # Get detailed application data
+        application_data = {
             'id': application.id,
-            'status': application.status or 'pending',
+            'job_id': application.job_id,
+            'job_title': application.job.title,
+            'job_company': application.job.company,
+            'job_location': application.job.location,
+            'job_description': application.job.description,
+            'job_requirements': application.job.requirements,
+            'resume_id': application.resume_id,
+            'resume_filename': application.resume.filename if application.resume else None,
+            'status': application.status,
             'cover_letter': application.cover_letter,
             'match_score': application.match_score,
+            'applied_at': application.created_at.isoformat() if application.created_at else None,
             'created_at': application.created_at.isoformat() if application.created_at else None,
             'updated_at': application.updated_at.isoformat() if application.updated_at else None,
+            'candidate': {
+                'id': application.resume.user_id if application.resume else None,
+                'name': application.resume.user.name if application.resume and application.resume.user else 'Unknown',
+                'email': application.resume.user.email if application.resume and application.resume.user else '',
+                'github_username': application.resume.user.github_username if application.resume and application.resume.user else None
+            },
             'job': {
-                'id': application.job.id,
                 'title': application.job.title,
                 'company': application.job.company,
-                'description': application.job.description,
-                'requirements': application.job.requirements,
                 'location': application.job.location,
-                'salary_min': application.job.salary_min,
-                'salary_max': application.job.salary_max,
-                'employment_type': application.job.employment_type,
-                'category': application.job.category
+                'description': application.job.description
             },
             'resume': {
-                'id': application.resume.id,
-                'filename': application.resume.filename,
-                'name': application.resume.name,
-                'skills': application.resume.skills,
-                'experience': application.resume.experience,
-                'education': application.resume.education
+                'id': application.resume.id if application.resume else None,
+                'filename': application.resume.filename if application.resume else None,
+                'name': application.resume.name if application.resume else application.resume.user.name if application.resume and application.resume.user else 'Unknown',
+                'email': application.resume.email if application.resume else application.resume.user.email if application.resume and application.resume.user else '',
+                'phone': application.resume.phone if application.resume else None,
+                'skills': application.resume.skills if application.resume else [],
+                'experience': application.resume.experience if application.resume else [],
+                'education': application.resume.education if application.resume else []
             }
         }
         
-        return jsonify(app_data), 200
+        return jsonify({
+            'success': True,
+            'application': application_data
+        })
         
     except Exception as e:
-        logger.error(f"Error getting application details: {str(e)}")
-        return jsonify({'error': 'Failed to retrieve application details'}), 500
+        current_app.logger.error(f"Error getting application details: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to get application details'}), 500
 
 # Job Matching Analysis Endpoints
 @jobs_bp.route('/applications/<int:application_id>/match-analysis', methods=['GET'])
@@ -1974,3 +2155,251 @@ def get_recent_applications():
     except Exception as e:
         logger.error(f"Error getting recent applications: {str(e)}")
         return jsonify({'error': 'Failed to load recent applications'}), 500
+
+@jobs_bp.route('/<int:job_id>/match-analysis', methods=['POST'])
+@require_auth  
+def analyze_job_matches(job_id):
+    """Analyze matches between a job and candidate resumes using AI"""
+    
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'HR access required'}), 403
+        
+        job = Job.query.get_or_404(job_id)
+        
+        # Check if user owns this job
+        if job.created_by != user.id:
+            return jsonify({'error': 'You can only analyze matches for your own job postings'}), 403
+        
+        # Get optional filters
+        data = request.get_json() or {}
+        min_score = data.get('min_score', 0.5)
+        max_results = data.get('max_results', 20)
+        
+        # Get all candidate resumes or specific resumes if provided
+        resume_ids = data.get('resume_ids')
+        if resume_ids:
+            resumes = Resume.query.filter(Resume.id.in_(resume_ids)).all()
+        else:
+            resumes = Resume.query.all()
+        
+        if not resumes:
+            return jsonify({
+                'success': True,
+                'job_id': job_id,
+                'matches': [],
+                'message': 'No candidate resumes found to analyze'
+            })
+        
+        # Use job matching service
+        from job_matching_service import JobMatchingService
+        matching_service = JobMatchingService()
+        
+        # Analyze matches
+        matches = []
+        for resume in resumes:
+            try:
+                analysis = matching_service.analyze_job_match(
+                    resume_data=resume.to_dict(),
+                    job_data=job.to_dict()
+                )
+                
+                # Filter by minimum score
+                if analysis.get('overall_match_score', 0) >= (min_score * 100):
+                    matches.append(analysis)
+                    
+            except Exception as e:
+                logger.error(f"Error analyzing match for resume {resume.id}: {e}")
+                continue
+        
+        # Sort by match score and limit results
+        matches.sort(key=lambda x: x.get('overall_match_score', 0), reverse=True)
+        matches = matches[:max_results]
+
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'job_title': job.title,
+            'total_candidates_analyzed': len(resumes),
+            'matches_found': len(matches),
+            'matches': matches,
+            'analysis_criteria': {
+                'min_score': min_score,
+                'max_results': max_results
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in job match analysis: {e}")
+        return jsonify({'error': 'Match analysis failed'}), 500
+
+@jobs_bp.route('/<int:job_id>/compare-candidates', methods=['POST'])
+@require_auth
+def compare_candidates_for_job(job_id):
+    """Compare multiple candidate resumes for a specific job"""
+    
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'HR access required'}), 403
+        
+        job = Job.query.get_or_404(job_id)
+        
+        # Check if user owns this job
+        if job.created_by != user.id:
+            return jsonify({'error': 'You can only compare candidates for your own job postings'}), 403
+        
+        data = request.get_json()
+        resume_ids = data.get('resume_ids', [])
+        
+        if len(resume_ids) < 2:
+            return jsonify({'error': 'At least 2 resumes required for comparison'}), 400
+        
+        resumes = Resume.query.filter(Resume.id.in_(resume_ids)).all()
+        
+        if len(resumes) != len(resume_ids):
+            return jsonify({'error': 'Some resumes not found'}), 404
+        
+        # Use job matching service
+        from job_matching_service import JobMatchingService
+        matching_service = JobMatchingService()
+        
+        # Get comparison analysis
+        resume_data = [resume.to_dict() for resume in resumes]
+        comparison_result = matching_service.compare_multiple_resumes(
+            resumes=resume_data,
+            job_data=job.to_dict()
+        )
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'job_title': job.title,
+            'comparison': comparison_result
+        })
+        
+    except Exception as e:
+        logger.error(f"Error comparing candidates: {e}")
+        return jsonify({'error': 'Candidate comparison failed'}), 500
+
+@jobs_bp.route('/<int:job_id>/skills-analysis', methods=['GET'])
+@require_auth
+def analyze_job_skills_requirements(job_id):
+    """Analyze skills requirements for a job and suggest improvements"""
+    
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'HR access required'}), 403
+        
+        job = Job.query.get_or_404(job_id)
+        
+        # Check if user owns this job
+        if job.created_by != user.id:
+            return jsonify({'error': 'You can only analyze your own job postings'}), 403
+        
+        # Use job matching service for skills analysis
+        from job_matching_service import JobMatchingService
+        matching_service = JobMatchingService()
+        
+        skills_analysis = matching_service.analyze_job_skills_requirements(job.to_dict())
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'job_title': job.title,
+            'skills_analysis': skills_analysis
+        })
+        
+    except Exception as e:
+        logger.error(f"Error analyzing job skills: {e}")
+        return jsonify({'error': 'Skills analysis failed'}), 500
+
+@jobs_bp.route('/market-analysis', methods=['POST'])
+@require_auth
+def job_market_analysis():
+    """Analyze job market trends and salary insights"""
+    
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'HR access required'}), 403
+        
+        data = request.get_json()
+        job_title = data.get('job_title', '')
+        location = data.get('location', '')
+        skills = data.get('skills', [])
+        
+        if not job_title:
+            return jsonify({'error': 'Job title is required'}), 400
+        
+        # Use job matching service for market analysis
+        from job_matching_service import JobMatchingService
+        matching_service = JobMatchingService()
+        
+        market_analysis = matching_service.analyze_job_market(
+            title=job_title,
+            location=location,
+            skills=skills
+        )
+        
+        return jsonify({
+            'success': True,
+            'market_analysis': market_analysis
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in market analysis: {e}")
+        return jsonify({'error': 'Market analysis failed'}), 500
+
+@jobs_bp.route('/applications/<int:application_id>', methods=['PUT'])
+@require_auth
+def update_application_status(application_id):
+    """Update application status"""
+    try:
+        user = User.query.get(request.current_user_id)
+        if not user or user.role != 'hr':
+            return jsonify({'error': 'Access denied. HR role required.'}), 403
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'error': 'Status is required'}), 400
+        
+        # Validate status
+        valid_statuses = ['pending', 'reviewed', 'shortlisted', 'interviewed', 'hired', 'rejected']
+        if new_status not in valid_statuses:
+            return jsonify({'error': 'Invalid status'}), 400
+        
+        # Get the application - make sure it's for a job created by this HR user
+        application = db.session.query(Application).join(Job).filter(
+            Application.id == application_id,
+            Job.created_by == user.id
+        ).first()
+        
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+        
+        # Update status
+        application.status = new_status
+        application.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Application status updated to {new_status}',
+            'application': {
+                'id': application.id,
+                'status': application.status,
+                'updated_at': application.updated_at.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating application status: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to update application status'}), 500

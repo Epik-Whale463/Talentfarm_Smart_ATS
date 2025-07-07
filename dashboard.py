@@ -40,6 +40,11 @@ def hr_dashboard():
     """HR dashboard"""
     return render_template('hr_dashboard.html')
 
+@dashboard_bp.route('/hr/interviews')
+def hr_interviews_page():
+    """HR interviews management page"""
+    return render_template('hr_interviews.html')
+
 @dashboard_bp.route('/resumes')
 def resumes_page():
     """Resume management page"""

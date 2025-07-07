@@ -10,6 +10,7 @@ from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.prompts import PromptTemplate
 import logging
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -148,6 +149,109 @@ class JobMatchingService:
         except Exception as e:
             logger.error(f"Error in skill gap analysis: {str(e)}")
             return self._create_error_response(str(e))
+    
+    def analyze_job_skills_requirements(self, job_data: Dict) -> Dict:
+        """Analyze skills requirements for a job and suggest improvements"""
+        try:
+            job_text = self._extract_job_text(job_data)
+            
+            skills_prompt = f"""
+            Analyze the following job posting and provide detailed skills analysis:
+            
+            Job: {job_text}
+            
+            Please provide analysis in this JSON structure:
+            {{
+                "required_skills": [
+                    {{"skill": "skill_name", "category": "technical/soft", "importance": "high/medium/low", "justification": "why needed"}}
+                ],
+                "optional_skills": [
+                    {{"skill": "skill_name", "category": "technical/soft", "value_add": "how it helps"}}
+                ],
+                "skills_gaps": [
+                    {{"missing_skill": "skill_name", "why_important": "explanation", "priority": "high/medium/low"}}
+                ],
+                "market_competitiveness": {{
+                    "salary_competitiveness": "high/medium/low",
+                    "skills_demand": "high/medium/low",
+                    "suggestions": ["improvement suggestions"]
+                }},
+                "recommendations": [
+                    "specific recommendations to improve job posting"
+                ]
+            }}
+            """
+            
+            response = self.llm.invoke([
+                SystemMessage(content="You are an expert HR consultant specializing in job requirements analysis."),
+                HumanMessage(content=skills_prompt)
+            ])
+            
+            # Parse response
+            result = self._parse_json_response(response.content)
+            result['job_title'] = job_data.get('title', 'Unknown')
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error analyzing job skills: {e}")
+            return {"error": f"Skills analysis failed: {str(e)}"}
+    
+    def analyze_job_market(self, title: str, location: str = "", skills: List[str] = None) -> Dict:
+        """Analyze job market trends and salary insights"""
+        try:
+            skills = skills or []
+            
+            market_prompt = f"""
+            Provide job market analysis for:
+            - Job Title: {title}
+            - Location: {location or "General"}
+            - Key Skills: {', '.join(skills) if skills else "Not specified"}
+            
+            Provide analysis in this JSON structure:
+            {{
+                "market_demand": {{
+                    "demand_level": "high/medium/low",
+                    "growth_trend": "increasing/stable/decreasing",
+                    "explanation": "market analysis explanation"
+                }},
+                "salary_insights": {{
+                    "estimated_range": {{"min": 50000, "max": 100000}},
+                    "currency": "USD",
+                    "factors_affecting_salary": ["factor1", "factor2"],
+                    "comparison_to_market": "above/at/below market rate"
+                }},
+                "skill_trends": [
+                    {{"skill": "skill_name", "trend": "rising/stable/declining", "importance": "high/medium/low"}}
+                ],
+                "competitive_landscape": {{
+                    "competition_level": "high/medium/low",
+                    "key_differentiators": ["what makes candidates stand out"],
+                    "common_requirements": ["most common job requirements"]
+                }},
+                "recommendations": {{
+                    "for_employers": ["hiring advice"],
+                    "for_candidates": ["career advice"]
+                }}
+            }}
+            """
+            
+            response = self.llm.invoke([
+                SystemMessage(content="You are an expert market analyst specializing in job market trends and salary analysis."),
+                HumanMessage(content=market_prompt)
+            ])
+            
+            # Parse response
+            result = self._parse_json_response(response.content)
+            result['analysis_date'] = datetime.now().isoformat()
+            result['analyzed_position'] = title
+            result['analyzed_location'] = location
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error analyzing job market: {e}")
+            return {"error": f"Market analysis failed: {str(e)}"}
     
     def _extract_resume_text(self, resume_data: Dict) -> str:
         """Extract comprehensive text from resume data"""
@@ -432,3 +536,25 @@ Provide a detailed skill gap analysis in JSON format:
                 "growth_potential": f"Error: {error_message}"
             }
         }
+    
+    def _parse_json_response(self, response_text: str) -> Dict:
+        """Parse JSON response from LLM"""
+        try:
+            # Try to extract JSON from response
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx != 0:
+                json_str = response_text[start_idx:end_idx]
+                return json.loads(json_str)
+            else:
+                # Fallback for non-JSON responses
+                return {
+                    "error": "Non-JSON response received",
+                    "raw_response": response_text
+                }
+        except json.JSONDecodeError:
+            return {
+                "error": "Invalid JSON in response", 
+                "raw_response": response_text
+            }

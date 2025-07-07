@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Management - HR Dashboard{% endblock %}
+
+{% block content %}
+<style>
+/* Interview Management Styles */
+.interview-header {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.interview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.interview-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.table-header {
+    background: #f8fafc;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.interview-item {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+    gap: 1rem;
+    align-items: center;
+}
+
+.interview-item:hover {
+    background: #fafbfc;
+}
+
+.candidate-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.candidate-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.25rem;
+}
+
+.job-title {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.interview-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-scheduled {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.interview-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5a67d8;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+}
+
+.btn-danger {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.btn-danger:hover {
+    background: #feb2b2;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.filter-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<div class="interview-header">
+    <h1 style="margin: 0 0 0.5rem 0; color: #2d3748; font-size: 2rem;">Interview Management</h1>
+    <p style="margin: 0; color: #6b7280;">Manage and track all candidate interviews</p>
+</div>
+
+<!-- Interview Statistics -->
+<div class="interview-stats">
+    <div class="stat-card">
+        <div class="stat-number" id="total-interviews">0</div>
+        <div class="stat-label">Total Interviews</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="scheduled-interviews">0</div>
+        <div class="stat-label">Scheduled</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="completed-interviews">0</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="today-interviews">0</div>
+        <div class="stat-label">Today</div>
+    </div>
+</div>
+
+<!-- Filters and Actions -->
+<div class="filters">
+    <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select id="status-filter" class="filter-select">
+            <option value="">All Statuses</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Interview Type</label>
+        <select id="type-filter" class="filter-select">
+            <option value="">All Types</option>
+            <option value="phone">Phone</option>
+            <option value="video">Video</option>
+            <option value="in-person">In-Person</option>
+            <option value="technical">Technical</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Date Range</label>
+        <select id="date-filter" class="filter-select">
+            <option value="">All Dates</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" onclick="scheduleNewInterview()">
+        Schedule Interview
+    </button>
+</div>
+
+<!-- Interviews Table -->
+<div class="interview-table">
+    <div class="table-header">
+        <h3 style="margin: 0;">Scheduled Interviews</h3>
+        <div>
+            <button class="btn btn-secondary btn-sm" onclick="refreshInterviews()">Refresh</button>
+        </div>
+    </div>
+    <div id="interviews-list">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            Loading interviews...
+        </div>
+    </div>
+</div>
+
+<script>
+let interviews = [];
+let filteredInterviews = [];
+
+// Initialize the interviews page
+document.addEventListener('DOMContentLoaded', function() {
+    loadInterviews();
+    setupFilters();
+});
+
+function loadInterviews() {
+    fetch('/api/interviews/', {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            interviews = data.interviews || [];
+            filteredInterviews = interviews;
+            updateStats();
+            displayInterviews();
+        } else {
+            showError('Failed to load interviews');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading interviews:', error);
+        showError('Error loading interviews');
+    });
+}
+
+function updateStats() {
+    const total = interviews.length;
+    const scheduled = interviews.filter(i => i.status === 'scheduled').length;
+    const completed = interviews.filter(i => i.status === 'completed').length;
+    
+    // Count today's interviews
+    const today = new Date().toDateString();
+    const todayInterviews = interviews.filter(interview => {
+        const interviewDate = new Date(interview.scheduled_at).toDateString();
+        return interviewDate === today;
+    }).length;
+    
+    document.getElementById('total-interviews').textContent = total;
+    document.getElementById('scheduled-interviews').textContent = scheduled;
+    document.getElementById('completed-interviews').textContent = completed;
+    document.getElementById('today-interviews').textContent = todayInterviews;
+}
+
+function displayInterviews() {
+    const container = document.getElementById('interviews-list');
+    
+    if (filteredInterviews.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No interviews found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const interviewsHTML = filteredInterviews.map(interview => {
+        const scheduledDate = new Date(interview.scheduled_at);
+        const statusClass = `status-${interview.status}`;
+        
+        return `
+            <div class="interview-item">
+                <div class="candidate-info">
+                    <div class="candidate-name">${interview.candidate_name || 'Unknown Candidate'}</div>
+                    <div class="job-title">${interview.job_title || 'Unknown Position'}</div>
+                </div>
+                <div>${interview.interview_type || 'N/A'}</div>
+                <div>${scheduledDate.toLocaleDateString()}</div>
+                <div>${scheduledDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                <div>
+                    <span class="interview-status ${statusClass}">${interview.status}</span>
+                </div>
+                <div class="interview-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="viewInterview(${interview.id})">View</button>
+                    ${interview.status === 'scheduled' ? `
+                        <button class="btn btn-primary btn-sm" onclick="editInterview(${interview.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelInterview(${interview.id})">Cancel</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = interviewsHTML;
+}
+
+function setupFilters() {
+    document.getElementById('status-filter').addEventListener('change', applyFilters);
+    document.getElementById('type-filter').addEventListener('change', applyFilters);
+    document.getElementById('date-filter').addEventListener('change', applyFilters);
+}
+
+function applyFilters() {
+    const statusFilter = document.getElementById('status-filter').value;
+    const typeFilter = document.getElementById('type-filter').value;
+    const dateFilter = document.getElementById('date-filter').value;
+    
+    filteredInterviews = interviews.filter(interview => {
+        if (statusFilter && interview.status !== statusFilter) return false;
+        if (typeFilter && interview.interview_type !== typeFilter) return false;
+        
+        if (dateFilter) {
+            const interviewDate = new Date(interview.scheduled_at);
+            const now = new Date();
+            
+            switch (dateFilter) {
+                case 'today':
+                    if (interviewDate.toDateString() !== now.toDateString()) return false;
+                    break;
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    if (interviewDate < weekAgo || interviewDate > now) return false;
+                    break;
+                case 'month':
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    if (interviewDate < monthAgo || interviewDate > now) return false;
+                    break;
+            }
+        }
+        
+        return true;
+    });
+    
+    displayInterviews();
+}
+
+function scheduleNewInterview() {
+    alert('Schedule new interview functionality would be implemented here');
+}
+
+function viewInterview(id) {
+    alert(`View interview ${id} details`);
+}
+
+function editInterview(id) {
+    alert(`Edit interview ${id}`);
+}
+
+function cancelInterview(id) {
+    if (confirm('Are you sure you want to cancel this interview?')) {
+        // Implement cancel interview API call
+        alert(`Interview ${id} cancelled`);
+        loadInterviews();
+    }
+}
+
+function refreshInterviews() {
+    loadInterviews();
+}
+
+function showError(message) {
+    document.getElementById('interviews-list').innerHTML = `
+        <div class="empty-state">
+            <p style="color: #dc2626;">${message}</p>
+        </div>
+    `;
+}
+</script>
+{% endblock %}
