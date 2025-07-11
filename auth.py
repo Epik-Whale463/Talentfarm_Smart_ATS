@@ -215,6 +215,21 @@ def github_callback():
         if not primary_email:
             return jsonify({'error': 'Failed to get email from GitHub'}), 400
         
+        # Debug: Log GitHub user info (remove sensitive data)
+        github_debug_info = {
+            'id': github_user_info.get('id'),
+            'login': github_user_info.get('login'),
+            'name': github_user_info.get('name'),
+            'email': github_user_info.get('email'),
+            'has_avatar': bool(github_user_info.get('avatar_url'))
+        }
+        print(f"GitHub user info: {github_debug_info}")
+        print(f"Primary email: {primary_email}")
+        
+        # Validate essential GitHub user info
+        if not github_user_info.get('id') or not github_user_info.get('login'):
+            return jsonify({'error': 'Invalid GitHub user data received'}), 400
+        
         # Check if user exists
         user = User.query.filter_by(github_id=str(github_user_info['id'])).first()
         is_new_user = False
@@ -235,9 +250,21 @@ def github_callback():
                 # Get preferred role from session if available
                 preferred_role = session.get('preferred_role')
                 
+                # Ensure we have a valid name - fallback hierarchy
+                user_name = (
+                    github_user_info.get('name') or  # GitHub display name
+                    github_user_info.get('login') or  # GitHub username
+                    primary_email.split('@')[0] or   # Email username part
+                    'GitHub User'  # Final fallback
+                ).strip()
+                
+                # Ensure name is not empty string
+                if not user_name:
+                    user_name = 'GitHub User'
+                
                 user = User(
                     email=primary_email,
-                    name=github_user_info.get('name', github_user_info['login']),
+                    name=user_name,
                     github_id=str(github_user_info['id']),
                     github_username=github_user_info['login'],
                     github_avatar=github_user_info.get('avatar_url', ''),
@@ -249,12 +276,49 @@ def github_callback():
                 is_new_user = True
                 
         else:
-            # Update existing user
+            # Update existing user with validated name
             user.github_username = github_user_info['login']
             user.github_avatar = github_user_info.get('avatar_url', '')
             user.github_access_token = token['access_token']
+            
+            # Update name if it's empty or just whitespace
+            if not user.name or not user.name.strip():
+                user_name = (
+                    github_user_info.get('name') or
+                    github_user_info.get('login') or
+                    user.email.split('@')[0] or
+                    'GitHub User'
+                ).strip()
+                user.name = user_name if user_name else 'GitHub User'
         
-        db.session.commit()
+        try:
+            db.session.commit()
+            print(f"Successfully {'created' if is_new_user else 'updated'} user: {user.name} ({user.email})")
+        except Exception as db_error:
+            db.session.rollback()
+            print(f"Database error: {str(db_error)}")
+            return f"""
+            <html>
+            <head>
+                <title>Database Error</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+            </head>
+            <body class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+                <div class="card shadow-sm" style="max-width: 500px;">
+                    <div class="card-body p-4">
+                        <h3 class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Authentication Error</h3>
+                        <p>There was a problem authenticating with GitHub: {str(db_error)}</p>
+                        <div class="d-grid">
+                            <a href="/login" class="btn btn-primary">Return to Login</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # Store GitHub access token in session
+        session['github_access_token'] = token['access_token']
         
         # Generate JWT token
         jwt_token = generate_token(user.id)

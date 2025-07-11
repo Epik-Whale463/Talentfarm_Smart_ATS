@@ -12,6 +12,7 @@ from sentence_transformers import SentenceTransformer
 import re
 
 from models import Resume, Job, db
+from config import Config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,11 +22,8 @@ class RAGTalentService:
     def __init__(self):
         """Initialize RAG service with Qdrant and SentenceTransformers"""
         
-        # Initialize Qdrant client
-        self.qdrant_client = QdrantClient(
-            url="https://222f8841-7574-4680-85ca-696426f82250.europe-west3-0.gcp.cloud.qdrant.io:6333", 
-            api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.Gd5vuQE4uY1n4Uqts7tHBzPfPzKOvNlmLojb0Rd9rm0",
-        )
+        # Initialize Qdrant client with multiple connection attempts
+        self.qdrant_client = self._initialize_qdrant_client()
         
         # Initialize embedding model
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -1096,6 +1094,50 @@ class RAGTalentService:
         except Exception as e:
             logger.error(f"Error indexing resume {resume.id}: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _initialize_qdrant_client(self):
+        """Initialize Qdrant client with retry logic for cloud connection"""
+        connection_attempts = [
+            # First attempt: HTTPS with gRPC
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY,
+                "port": 443,
+                "https": True,
+                "prefer_grpc": True
+            },
+            # Second attempt: HTTPS only
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY,
+                "port": 443,
+                "https": True,
+                "prefer_grpc": False
+            },
+            # Third attempt: Basic connection
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY
+            }
+        ]
+        
+        for i, config in enumerate(connection_attempts):
+            try:
+                logger.info(f"Attempting Qdrant connection {i+1}/{len(connection_attempts)}")
+                
+                client = QdrantClient(**config)
+                
+                # Test connection
+                collections = client.get_collections()
+                logger.info(f"Successfully connected to Qdrant cloud (attempt {i+1})")
+                return client
+                
+            except Exception as e:
+                logger.warning(f"Connection attempt {i+1} failed: {e}")
+                if i == len(connection_attempts) - 1:
+                    logger.error("All Qdrant connection attempts failed")
+                    raise ConnectionError(f"Cannot connect to Qdrant after {len(connection_attempts)} attempts. Last error: {e}")
+                continue
 
 # Initialize RAG service instance
 rag_service = RAGTalentService()

@@ -128,8 +128,17 @@
     border-left: 2px solid #ff9a9e;
 }
 
+.github-analysis-action {
+    grid-column: 11 / 14;
+    grid-row: 3 / 4;
+    background: linear-gradient(135deg, rgba(36, 41, 46, 0.08) 0%, rgba(13, 17, 23, 0.08) 100%);
+    color: #2d3748;
+    border-left: 2px solid #24292e;
+    cursor: pointer;
+}
+
 .quick-apply {
-    grid-column: 11 / 17;
+    grid-column: 14 / 17;
     grid-row: 3 / 4;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
     color: #2d3748;
@@ -175,9 +184,10 @@
     .match-stat { grid-column: 10 / 12; }
     .interview-stat { grid-column: 12 / 13; }
     
-    .upload-action { grid-column: 1 / 5; }
-    .browse-action { grid-column: 5 / 9; }
-    .quick-apply { grid-column: 9 / 13; }
+    .upload-action { grid-column: 1 / 4; }
+    .browse-action { grid-column: 4 / 7; }
+    .github-analysis-action { grid-column: 7 / 10; }
+    .quick-apply { grid-column: 10 / 13; }
     
     .recent-resumes { grid-column: 1 / 7; grid-row: 4 / 7; }
     .recent-applications { grid-column: 7 / 13; grid-row: 4 / 7; }
@@ -212,10 +222,11 @@
     
     .upload-action { grid-column: 1 / 5; grid-row: 5 / 6; }
     .browse-action { grid-column: 1 / 5; grid-row: 6 / 7; }
-    .quick-apply { grid-column: 1 / 5; grid-row: 7 / 8; }
+    .github-analysis-action { grid-column: 1 / 5; grid-row: 7 / 8; }
+    .quick-apply { grid-column: 1 / 5; grid-row: 8 / 9; }
     
-    .recent-resumes { grid-column: 1 / 5; grid-row: 8 / 10; }
-    .recent-applications { grid-column: 1 / 5; grid-row: 10 / 12; }
+    .recent-resumes { grid-column: 1 / 5; grid-row: 9 / 11; }
+    .recent-applications { grid-column: 1 / 5; grid-row: 11 / 13; }
     
     .welcome-header,
     .recent-resumes,
@@ -703,6 +714,16 @@
         <a href="{{ url_for('dashboard.jobs_page') }}" class="btn btn-success">
             <i class="fas fa-search me-2"></i>View Jobs
         </a>
+    </div>
+
+    <!-- GitHub Analysis Action -->
+    <div class="bento-item github-analysis-action" onclick="showGitHubAnalysis()" title="Analyze your GitHub repositories">
+        <i class="fab fa-github action-icon"></i>
+        <h5 class="mb-2">GitHub Analysis</h5>
+        <p class="small mb-3">AI-powered code assessment</p>
+        <button class="btn btn-dark" id="githubAnalysisBtn">
+            <i class="fas fa-code me-2"></i>Analyze Code
+        </button>
     </div>
 
     <!-- Quick Apply -->
@@ -2991,6 +3012,328 @@ function generateBasicApplicationHTML(application) {
         setTimeout(() => {
             getResumeInsights(resumeId);
         }, 500);
+    }
+
+    // GitHub Analysis Functions
+    let githubAnalysisData = null;
+
+    async function showGitHubAnalysis() {
+        try {
+            // Check if user is authenticated
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showAlert('Please log in to access GitHub analysis.', 'warning');
+                return;
+            }
+
+            // Show loading state
+            const btn = document.getElementById('githubAnalysisBtn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connecting...';
+            btn.disabled = true;
+
+            // Check if user has GitHub connected and get repos
+            const checkResponse = await fetch('/api/github/repos', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (checkResponse.status === 401) {
+                const errorData = await checkResponse.json();
+                if (errorData.github_login_url) {
+                    // User needs to connect GitHub account
+                    showAlert('Please connect your GitHub account first.', 'info');
+                    
+                    // Reset button and redirect to GitHub login
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    
+                    // Open GitHub login in current tab
+                    window.location.href = errorData.github_login_url + '?redirect_to_frontend=true';
+                    return;
+                }
+            } else if (checkResponse.ok) {
+                // User has GitHub connected, show analysis modal
+                showGitHubAnalysisModal();
+            } else {
+                throw new Error('Failed to check GitHub connection');
+            }
+
+            // Reset button
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+
+        } catch (error) {
+            console.error('GitHub analysis error:', error);
+            showAlert('Failed to connect to GitHub. Please try again.', 'error');
+            
+            // Reset button
+            const btn = document.getElementById('githubAnalysisBtn');
+            btn.innerHTML = '<i class="fas fa-code me-2"></i>Analyze Code';
+            btn.disabled = false;
+        }
+    }
+
+    async function showGitHubAnalysisModal() {
+        const modalHtml = `
+            <div class="modal fade" id="githubAnalysisModal" tabindex="-1" aria-labelledby="githubAnalysisModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="githubAnalysisModalLabel">
+                                <i class="fab fa-github me-2"></i>GitHub Repository Analysis
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center" id="githubAnalysisLoading">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3">Analyzing your GitHub repositories...</p>
+                                <small class="text-muted">This may take a few moments as we examine your code quality, complexity, and project scope.</small>
+                            </div>
+                            <div id="githubAnalysisContent" style="display: none;"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="startGitHubAnalysis()" id="analyzeBtn" style="display: none;">
+                                <i class="fas fa-sync-alt me-2"></i>Re-analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if present
+        const existingModal = document.getElementById('githubAnalysisModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('githubAnalysisModal'));
+        modal.show();
+
+        // Start analysis
+        await startGitHubAnalysis();
+    }
+
+    async function startGitHubAnalysis() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/github/analyze', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Analysis failed');
+            }
+
+            githubAnalysisData = data;
+            displayGitHubAnalysis(data);
+
+        } catch (error) {
+            console.error('GitHub analysis error:', error);
+            document.getElementById('githubAnalysisLoading').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Analysis failed: ${error.message}
+                </div>
+                <button class="btn btn-primary" onclick="startGitHubAnalysis()">
+                    <i class="fas fa-retry me-2"></i>Try Again
+                </button>
+            `;
+        }
+    }
+
+    function displayGitHubAnalysis(data) {
+        const loadingDiv = document.getElementById('githubAnalysisLoading');
+        const contentDiv = document.getElementById('githubAnalysisContent');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        analyzeBtn.style.display = 'inline-block';
+
+        const overall = data.overall_assessment || {};
+        
+        let contentHtml = `
+            <div class="row">
+                <!-- Overall Assessment -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Overall Assessment</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center mb-3">
+                                <div class="col-6">
+                                    <div class="badge bg-primary fs-6 p-2 w-100">
+                                        ${overall.developer_level || 'Intermediate'}
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Developer Level</small>
+                                </div>
+                                <div class="col-6">
+                                    <div class="badge bg-success fs-6 p-2 w-100">
+                                        ${overall.employability_score || 65}/100
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Employability Score</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Portfolio Summary</h6>
+                                <p class="small">${overall.portfolio_summary || 'Analysis in progress...'}</p>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <h6>Hiring Recommendation</h6>
+                                <span class="badge ${getRecommendationBadgeClass(overall.hiring_recommendation)}">
+                                    ${formatRecommendation(overall.hiring_recommendation)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Insights -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Technical Insights</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6>Strengths</h6>
+                                <ul class="list-unstyled">
+                                    ${(overall.technical_strengths || []).map(strength => 
+                                        `<li><i class="fas fa-check text-success me-2"></i>${strength}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Areas for Improvement</h6>
+                                <ul class="list-unstyled">
+                                    ${(overall.areas_for_improvement || []).map(area => 
+                                        `<li><i class="fas fa-arrow-up text-warning me-2"></i>${area}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                            
+                            <div>
+                                <h6>Technology Breadth</h6>
+                                <span class="badge bg-secondary">${overall.technology_breadth || 'Moderate'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repository Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-folder-open me-2"></i>
+                        Repository Analysis (${data.analyzed_repos}/${data.total_repos} repositories analyzed)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        ${(data.repo_analyses || []).map(repo => `
+                            <div class="col-md-6 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fab fa-github me-2"></i>${repo.repo_data.name}
+                                        </h6>
+                                        <p class="card-text small">${repo.repo_data.description || 'No description'}</p>
+                                        
+                                        <div class="row text-center mb-2">
+                                            <div class="col-4">
+                                                <div class="badge ${getQualityBadgeClass(repo.analysis.project_quality)} w-100">
+                                                    ${formatQuality(repo.analysis.project_quality)}
+                                                </div>
+                                                <small class="d-block text-muted">Quality</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="badge bg-info w-100">
+                                                    ${formatComplexity(repo.analysis.complexity_level)}
+                                                </div>
+                                                <small class="d-block text-muted">Complexity</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="badge bg-warning w-100">
+                                                    ${repo.repo_data.stargazers_count} ⭐
+                                                </div>
+                                                <small class="d-block text-muted">Stars</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <strong>Language:</strong> ${repo.repo_data.language || 'Not specified'}<br>
+                                                <strong>Verdict:</strong> ${repo.analysis.overall_verdict || 'Analysis pending...'}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        contentDiv.innerHTML = contentHtml;
+    }
+
+    function getQualityBadgeClass(quality) {
+        const map = {
+            'excellent': 'bg-success',
+            'good': 'bg-primary',
+            'fair': 'bg-warning',
+            'poor': 'bg-danger'
+        };
+        return map[quality] || 'bg-secondary';
+    }
+
+    function getRecommendationBadgeClass(recommendation) {
+        const map = {
+            'strongly_recommend': 'bg-success',
+            'recommend': 'bg-primary',
+            'consider': 'bg-warning',
+            'avoid': 'bg-danger'
+        };
+        return map[recommendation] || 'bg-secondary';
+    }
+
+    function formatQuality(quality) {
+        return quality ? quality.charAt(0).toUpperCase() + quality.slice(1) : 'Unknown';
+    }
+
+    function formatComplexity(complexity) {
+        return complexity ? complexity.charAt(0).toUpperCase() + complexity.slice(1) : 'Unknown';
+    }
+
+    function formatRecommendation(recommendation) {
+        const map = {
+            'strongly_recommend': 'Strongly Recommend',
+            'recommend': 'Recommend',
+            'consider': 'Consider',
+            'avoid': 'Avoid'
+        };
+        return map[recommendation] || 'Unknown';
     }
 </script>
 {% endblock %}

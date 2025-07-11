@@ -57,8 +57,9 @@ A cutting-edge, enterprise-grade Applicant Tracking System that revolutionizes t
 - **Socket.IO Client**: Real-time frontend integration
 
 ### Database & Storage
-- **SQLite**: Default lightweight database (production-ready)
-- **PostgreSQL/MySQL Support**: Enterprise database compatibility
+- **SQLite**: Default lightweight database (for development)
+- **PostgreSQL**: Production-ready database with scalability and performance
+- **Docker Integration**: Containerized PostgreSQL setup for easy deployment
 - **File Storage**: Secure document upload and management system
 - **Session Management**: Flask-Session with configurable backends
 
@@ -111,17 +112,31 @@ cp .env.example .env
 
 ### 3. Database Setup
 
+#### Development (SQLite)
 ```bash
-# Run comprehensive migration and setup
-python migrate_and_setup.py
+# Set environment to development
+python set_environment.py dev
 
-# This will:
-# - Backup existing database
-# - Create/update database schema
-# - Seed demo data
-# - Initialize vector database
-# - Check file permissions
+# Run migration for SQLite
+python migrate_db.py
 ```
+
+#### Production (PostgreSQL)
+```bash
+# See detailed PostgreSQL setup instructions
+cat POSTGRESQL_SETUP.md
+
+# Set environment to production (after setting PostgreSQL environment variables)
+python set_environment.py prod
+
+# Run migration for PostgreSQL
+python migrate_db.py
+```
+
+This will:
+- Create the appropriate database schema
+- Set up tables and relationships
+- Initialize the application with a clean database
 
 ### 4. System Health Check
 
@@ -176,12 +191,60 @@ docker run -p 6333:6333 qdrant/qdrant
 
 ### Production Configuration
 
+For production deployment, configure your environment variables:
+
 ```bash
-# Update .env for production
-ENV=production
+# Update .env.production for production deployment
+FLASK_ENV=production
 SECRET_KEY=your-secure-production-key
-DATABASE_URL=postgresql://user:pass@localhost/ats_prod
+
+# PostgreSQL Database Configuration
+DB_USER=atsuser
+DB_PASSWORD=your_secure_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ats
+
+# Vector Database Configuration
 QDRANT_URL=http://your-qdrant-server:6333
+QDRANT_API_KEY=your-qdrant-api-key
+
+# See POSTGRESQL_SETUP.md for detailed PostgreSQL setup instructions
+```
+
+### Docker Deployment
+
+The application includes scripts for Docker deployment to both Docker Hub and AWS:
+
+```bash
+# Windows PowerShell
+.\docker-deploy.ps1 build   # Build the Docker image
+.\docker-deploy.ps1 run     # Build and run with docker-compose
+.\docker-deploy.ps1 push    # Build and push to Docker Hub
+.\docker-deploy.ps1 aws     # Build and push to AWS ECR
+.\docker-deploy.ps1 all     # Do all steps
+
+# Windows CMD
+docker-deploy.bat build     # Build the Docker image
+docker-deploy.bat run       # Build and run with docker-compose
+docker-deploy.bat push      # Build and push to Docker Hub
+docker-deploy.bat aws       # Build and push to AWS ECR
+docker-deploy.bat all       # Do all steps
+
+# Linux/Mac
+chmod +x docker-deploy.sh   # Make script executable
+./docker-deploy.sh build    # Build the Docker image
+./docker-deploy.sh run      # Build and run with docker-compose
+./docker-deploy.sh push     # Build and push to Docker Hub
+./docker-deploy.sh aws      # Build and push to AWS ECR
+./docker-deploy.sh all      # Do all steps
+```
+
+For detailed instructions on PostgreSQL setup, Docker deployment, and AWS deployment:
+
+```bash
+# View PostgreSQL and deployment guide
+cat POSTGRESQL_SETUP.md
 ```
 
 ## 🎯 Core Features Deep Dive
@@ -384,9 +447,17 @@ python -c "from config import Config; print(Config.validate_config())"
 
 **2. Database Issues**
 ```bash
-# Reset database
-rm ats.db
-python migrate_and_setup.py
+# Reset SQLite database (development)
+python set_environment.py dev
+rm instance/ats.db
+python migrate_db.py
+
+# Reset PostgreSQL database (production)
+python set_environment.py prod
+# You may need to drop and recreate the database:
+# For docker: docker exec -it ats-postgres psql -U atsuser -c "DROP DATABASE IF EXISTS ats; CREATE DATABASE ats;"
+# For local PostgreSQL: psql -U atsuser -c "DROP DATABASE IF EXISTS ats; CREATE DATABASE ats;"
+python migrate_db.py
 ```
 
 **3. API Key Problems**

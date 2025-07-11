@@ -17,6 +17,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # Create required directories if they don't exist
+    os.makedirs('instance', exist_ok=True)
+    os.makedirs('uploads', exist_ok=True)
+    os.makedirs('resumes', exist_ok=True)
+    os.makedirs('static/uploads', exist_ok=True)
+    
     # Validate configuration
     config_validation = Config.validate_config()
     if not config_validation['is_valid']:
@@ -72,6 +78,10 @@ def create_app():
     app.register_blueprint(talent_search_bp, url_prefix='/api/talent-search')
     app.register_blueprint(dashboard_bp, url_prefix='/')
     
+    # Register GitHub analysis blueprint
+    from github_analysis_service import github_analysis_bp
+    app.register_blueprint(github_analysis_bp, url_prefix='/api')
+    
     # Register health check blueprint
     from health import health_bp
     app.register_blueprint(health_bp, url_prefix='/api/health')
@@ -84,4 +94,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=False, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

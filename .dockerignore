@@ -1,0 +1,95 @@
+# Git files
+.git
+.gitignore
+clear_database.py
+# Documentation
+README.md
+PROJECT_STRUCTURE.md
+PROJECT_IMPLEMENTATION_REPORT.md
+PROJECT_SUMMARY_REPORT.md
+
+# Development files
+.env
+.env.local
+.env.example
+labs.ipynb
+system_health_check.py
+quick_clear.py
+seed_jobs.py
+sync_to_vector_db.py
+talent_search_service_backup.py
+migrate_and_setup.py
+migrate_db.py
+clear_database.py
+initialize_rag.py
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Database files (will be created in container)
+*.db
+*.sqlite
+*.sqlite3
+instance/*.db
+ats.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Cache
+.cache/
+cache/
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Node modules (if any)
+node_modules/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Flask session (will be created in container)
+flask_session/
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Development uploads (production will mount external volume)
+uploads/*
+resumes/*
+!uploads/.gitkeep
+!resumes/.gitkeep

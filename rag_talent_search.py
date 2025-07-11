@@ -31,11 +31,8 @@ class RAGTalentSearchService:
         # Initialize embedding model
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         
-        # Initialize Qdrant client
-        self.qdrant_client = QdrantClient(
-            url=os.getenv('QDRANT_URL', 'http://localhost:6333'),
-            api_key=os.getenv('QDRANT_API_KEY')  # Optional for local setup
-        )
+        # Initialize Qdrant client with multiple connection attempts
+        self.qdrant_client = self._initialize_qdrant_client()
         
         # Collection name for candidate resumes
         self.collection_name = "candidate_resumes"
@@ -52,15 +49,67 @@ class RAGTalentSearchService:
         
         self.conversation_history = {}
     
+    def _initialize_qdrant_client(self):
+        """Initialize Qdrant client with retry logic for cloud connection"""
+        connection_attempts = [
+            # First attempt: HTTPS with gRPC
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY,
+                "port": 443,
+                "https": True,
+                "prefer_grpc": True
+            },
+            # Second attempt: HTTPS only
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY,
+                "port": 443,
+                "https": True,
+                "prefer_grpc": False
+            },
+            # Third attempt: Basic connection
+            {
+                "url": Config.QDRANT_URL,
+                "api_key": Config.QDRANT_API_KEY
+            }
+        ]
+        
+        for i, config in enumerate(connection_attempts):
+            try:
+                logger.info(f"Attempting Qdrant connection {i+1}/{len(connection_attempts)}")
+                
+                client = QdrantClient(**config)
+                
+                # Test connection
+                collections = client.get_collections()
+                logger.info(f"Successfully connected to Qdrant cloud (attempt {i+1})")
+                return client
+                
+            except Exception as e:
+                logger.warning(f"Connection attempt {i+1} failed: {e}")
+                if i == len(connection_attempts) - 1:
+                    logger.error("All Qdrant connection attempts failed")
+                    raise ConnectionError(f"Cannot connect to Qdrant after {len(connection_attempts)} attempts. Last error: {e}")
+                continue
+
     def _initialize_collection(self):
         """Initialize Qdrant collection for candidate resumes"""
         try:
+            # Test connection first
+            try:
+                collections_info = self.qdrant_client.get_collections()
+                logger.info("Qdrant connection successful")
+            except Exception as conn_e:
+                logger.error(f"Qdrant connection test failed: {conn_e}")
+                raise ConnectionError(f"Cannot connect to Qdrant: {conn_e}")
+            
             # Get embedding dimension
             sample_embedding = self.embedding_model.encode("sample text")
             vector_size = len(sample_embedding)
             
             # Check if collection exists
-            collections = self.qdrant_client.get_collections().collections
+            collections = collections_info.collections
             collection_exists = any(col.name == self.collection_name for col in collections)
             
             if not collection_exists:
@@ -78,6 +127,7 @@ class RAGTalentSearchService:
                 
         except Exception as e:
             logger.error(f"Error initializing Qdrant collection: {e}")
+            raise
     
     def index_candidate_resume(self, resume: Resume):
         """Index a candidate resume in Qdrant vector database"""

@@ -201,7 +201,14 @@ $RECYCLE.BIN/
 auto-save-list
 tramp
 .\#*
-
+.dockerignore
+TESTS/
+ats.env
+test_qdrant_connection.py
+DEPLOYMENT.md
+Dockerfile
+POSTGRESQL_SETUP.md
+advanced_hr_analytics_service.py
 # Application-specific files
 # Database files
 *.db
