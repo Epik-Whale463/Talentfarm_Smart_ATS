@@ -319,3 +319,9 @@ ats.db
 
 PROJECT_IMPLEMENTATION_REPORT.md
 PROJECT_SUMMARY_REPORT.md
+
+
+clear_database.py
+initialize_rag.py
+labs.ipynb
+migrate_and_setup.py
