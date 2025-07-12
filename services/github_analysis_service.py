@@ -4,7 +4,7 @@ import json
 from flask import Blueprint, request, jsonify, session, redirect
 from services.auth import require_auth, verify_token
 from config import Config
-from mistral_service import MistralOCRService
+from services.mistral_service import MistralOCRService
 from models import User, db
 from functools import wraps
 
