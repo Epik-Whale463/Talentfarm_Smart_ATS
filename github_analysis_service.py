@@ -65,6 +65,7 @@ class GitHubAnalysisService:
             simplified_repos = []
             for repo in repos:
                 repo_data = {
+                    'id': repo.get('id'),
                     'name': repo.get('name'),
                     'description': repo.get('description'),
                     'language': repo.get('language'),
@@ -303,7 +304,7 @@ def github_callback():
 @github_analysis_bp.route('/github/analyze', methods=['POST'])
 @require_auth_with_session
 def analyze_github():
-    """Analyze user's GitHub repositories"""
+    """Analyze user's GitHub repositories with optional filtering"""
     # Get current user from request context
     user = User.query.get(request.current_user_id)
     if not user:
@@ -334,9 +335,26 @@ def analyze_github():
         if not repos:
             return jsonify({'error': 'No repositories found'}), 404
         
-        # Analyze repositories (limit to top 10 for performance)
+        # Check for filters in the request
+        data = request.json or {}
+        repo_filter = data.get('repo_filter')  # Single repo ID filter
+        repo_ids = data.get('repo_ids')        # Multiple repo IDs filter
+        
+        # Filter repositories if specified
+        if repo_filter:
+            # Filter for a single repository
+            repos = [repo for repo in repos if str(repo.get('id')) == str(repo_filter)]
+        elif repo_ids:
+            # Filter for multiple specified repositories
+            repos = [repo for repo in repos if str(repo.get('id')) in [str(id) for id in repo_ids]]
+        
+        # Limit to 10 repos for performance if no specific filter is applied
+        if not repo_filter and not repo_ids and len(repos) > 10:
+            repos = repos[:10]
+        
+        # Analyze repositories
         repo_analyses = []
-        for repo in repos[:10]:  # Limit to 10 repos
+        for repo in repos:  
             # Get README content
             readme_content, _ = github_service.get_readme_content(access_token, repo['full_name'])
             

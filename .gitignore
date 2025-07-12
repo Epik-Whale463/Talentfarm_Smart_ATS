@@ -227,7 +227,6 @@ config.py
 .env
 .env.local
 .env.production
-
 # Log files
 *.log
 logs/
@@ -263,7 +262,8 @@ yarn-error.log*
 .local
 local_config.py
 dev_config.py
-
+clear_database.py
+initialize_rag.py
 # Cache directories
 .cache/
 cache/
