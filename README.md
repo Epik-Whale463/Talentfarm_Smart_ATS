@@ -10,7 +10,7 @@
 
 ## 🎥 Video Presentation
 
-**[📺 Watch Full System Demo & Technical Overview](https://drive.google.com/file/d/1v4W0W1NdQb2Ki8AwEmrqIidRWI-FYaRf/view)**
+[![AI-Powered ATS Demo](https://drive.google.com/thumbnail?id=1v4W0W1NdQb2Ki8AwEmrqIidRWI-FYaRf&sz=w1200-h675)](https://drive.google.com/file/d/1v4W0W1NdQb2Ki8AwEmrqIidRWI-FYaRf/view)
 
 *Complete walkthrough of the AI-powered ATS platform showcasing real-time candidate matching, intelligent resume parsing, vector search capabilities, and enterprise-grade features.*
 
