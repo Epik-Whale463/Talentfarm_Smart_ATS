@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, request
-from auth import require_auth
+from services.auth import require_auth
 
 dashboard_bp = Blueprint('dashboard', __name__)
 

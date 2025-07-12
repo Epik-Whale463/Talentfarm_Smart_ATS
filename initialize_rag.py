@@ -16,7 +16,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
-from rag_service import rag_service
+from services.rag_service import rag_service
 from models import Resume
 import logging
 

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, abort, current_app
-from auth import require_auth
+from services.auth import require_auth
 from models import db, Job, User, Resume, Application
 import json
 from datetime import datetime, timedelta
@@ -224,7 +224,7 @@ def create_job():
         
         # Auto-sync to vector database
         try:
-            from rag_service import RAGTalentService
+            from services.rag_service import RAGTalentService
             rag_service = RAGTalentService()
             sync_success = rag_service.auto_sync_job(job, 'create')
             if sync_success:
@@ -236,7 +236,7 @@ def create_job():
         
         # Notify the frontend about success
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             broadcast_dashboard_update(
                 user.id,
                 'job_posted',
@@ -658,7 +658,7 @@ def update_job(job_id):
         
         # Auto-sync update to vector database
         try:
-            from rag_service import RAGTalentService
+            from services.rag_service import RAGTalentService
             rag_service = RAGTalentService()
             sync_success = rag_service.auto_sync_job(job, 'update')
             if sync_success:
@@ -670,7 +670,7 @@ def update_job(job_id):
         
         # Notify about update
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             
             # Notify HR user about successful update
             broadcast_dashboard_update(
@@ -773,7 +773,7 @@ def delete_job(job_id):
             
             # Auto-sync update to vector database (soft delete)
             try:
-                from rag_service import RAGTalentService
+                from services.rag_service import RAGTalentService
                 rag_service = RAGTalentService()
                 sync_success = rag_service.auto_sync_job(job, 'update')
                 if sync_success:
@@ -789,7 +789,7 @@ def delete_job(job_id):
             
             # Auto-sync deletion to vector database first
             try:
-                from rag_service import RAGTalentService
+                from services.rag_service import RAGTalentService
                 rag_service = RAGTalentService()
                 sync_success = rag_service.auto_sync_job(job, 'delete')
                 if sync_success:
@@ -814,7 +814,7 @@ def delete_job(job_id):
         
         # Notify about deletion
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             
             # Notify HR user about successful deletion
             broadcast_dashboard_update(
@@ -1010,7 +1010,7 @@ def apply_to_job(job_id):
         
         # Notify both the candidate and the job creator (HR)
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             
             # Notify candidate
             broadcast_dashboard_update(
@@ -1190,7 +1190,7 @@ def withdraw_application(application_id):
         
         # Broadcast real-time update to user
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             broadcast_dashboard_update(
                 request.current_user_id, 
                 'application_withdrawn',
@@ -1628,7 +1628,7 @@ def get_application_match_analysis(application_id):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Import the job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         
         # Get resume and job data
         resume_data = application.resume.to_dict()
@@ -1676,7 +1676,7 @@ def get_skill_gap_analysis(application_id):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Import the job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         
         # Get resume and job data
         resume_data = application.resume.to_dict()
@@ -1720,7 +1720,7 @@ def match_job_with_resume(job_id, resume_id):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Import the job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         
         # Get data
         resume_data = resume.to_dict()
@@ -1764,7 +1764,7 @@ def get_best_job_matches():
             return jsonify({'matches': [], 'message': 'No active jobs available'}), 200
         
         # Import the job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         matching_service = JobMatchingService(api_key=current_app.config['GROQ_API_KEY'])
           # Analyze matches for each resume
         all_matches = []
@@ -2193,7 +2193,7 @@ def analyze_job_matches(job_id):
             })
         
         # Use job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         matching_service = JobMatchingService()
         
         # Analyze matches
@@ -2263,7 +2263,7 @@ def compare_candidates_for_job(job_id):
             return jsonify({'error': 'Some resumes not found'}), 404
         
         # Use job matching service
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         matching_service = JobMatchingService()
         
         # Get comparison analysis
@@ -2301,7 +2301,7 @@ def analyze_job_skills_requirements(job_id):
             return jsonify({'error': 'You can only analyze your own job postings'}), 403
         
         # Use job matching service for skills analysis
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         matching_service = JobMatchingService()
         
         skills_analysis = matching_service.analyze_job_skills_requirements(job.to_dict())
@@ -2336,7 +2336,7 @@ def job_market_analysis():
             return jsonify({'error': 'Job title is required'}), 400
         
         # Use job matching service for market analysis
-        from job_matching_service import JobMatchingService
+        from services.job_matching_service import JobMatchingService
         matching_service = JobMatchingService()
         
         market_analysis = matching_service.analyze_job_market(

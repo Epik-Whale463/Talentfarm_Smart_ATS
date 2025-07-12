@@ -3,13 +3,13 @@ from flask import Flask, session
 from flask_cors import CORS
 from config import Config
 from models import db
-from auth import auth_bp, init_oauth
+from services.auth import auth_bp, init_oauth
 from resumes import resumes_bp
 from jobs import jobs_bp
 from interviews import interviews_bp
 from dashboard import dashboard_bp
-from talent_search_service import talent_search_bp
-from realtime_service import socketio
+from services.talent_search_service import talent_search_bp
+from services.realtime_service import socketio
 import os
 
 def create_app():
@@ -64,7 +64,7 @@ def create_app():
     
     # Initialize RAG services
     try:
-        from rag_service import rag_service
+        from services.rag_service import rag_service
         from rag_talent_search import rag_talent_search_service
         app.logger.info("RAG services initialized")
     except Exception as e:
@@ -79,7 +79,7 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix='/')
     
     # Register GitHub analysis blueprint
-    from github_analysis_service import github_analysis_bp
+    from services.github_analysis_service import github_analysis_bp
     app.register_blueprint(github_analysis_bp, url_prefix='/api')
     
     # Register health check blueprint

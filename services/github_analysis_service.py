@@ -2,7 +2,7 @@ import requests
 import base64
 import json
 from flask import Blueprint, request, jsonify, session, redirect
-from auth import require_auth, verify_token
+from services.auth import require_auth, verify_token
 from config import Config
 from mistral_service import MistralOCRService
 from models import User, db

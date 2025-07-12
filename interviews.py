@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from auth import require_auth
+from services.auth import require_auth
 from models import db, Interview, Application, User, Job, Resume
 from datetime import datetime, timedelta
 import logging
@@ -66,7 +66,7 @@ def schedule_interview():
         logger.info(f"Interview scheduled by HR {user.id} for application {application.id}")
         
         # Send real-time notification to candidate
-        from realtime_service import broadcast_interview_scheduled
+        from services.realtime_service import broadcast_interview_scheduled
         candidate_user_id = application.resume.user_id
         interview_data = interview.to_dict()
         interview_data['job_title'] = application.job.title
@@ -251,7 +251,7 @@ def update_interview(interview_id):
         logger.info(f"Interview {interview_id} updated by user {user.id}")
         
         # Send real-time notification to candidate if interview was updated
-        from realtime_service import broadcast_interview_updated
+        from services.realtime_service import broadcast_interview_updated
         candidate_user_id = interview.application.resume.user_id
         interview_data = interview.to_dict()
         interview_data['job_title'] = interview.application.job.title
@@ -294,7 +294,7 @@ def cancel_interview(interview_id):
         logger.info(f"Interview {interview_id} cancelled by HR {user.id}")
         
         # Send real-time notification to candidate
-        from realtime_service import broadcast_interview_cancelled
+        from services.realtime_service import broadcast_interview_cancelled
         candidate_user_id = interview.application.resume.user_id
         interview_data = interview.to_dict()
         interview_data['job_title'] = interview.application.job.title

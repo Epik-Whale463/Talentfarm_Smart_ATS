@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
 from flask import Blueprint, request, jsonify, session
 from models import db, Resume, User, Application, Job
-from auth import require_auth
+from services.auth import require_auth
 from mistral_service import get_mistral_client
 from rag_service import rag_service
 import logging

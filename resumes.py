@@ -2,9 +2,9 @@ from flask import Blueprint, request, jsonify, current_app, send_file
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from auth import require_auth
+from services.auth import require_auth
 from models import db, Resume, User, Application, Job
-from mistral_service import MistralOCRService
+from services.mistral_service import MistralOCRService
 
 resumes_bp = Blueprint('resumes', __name__)
 
@@ -130,7 +130,7 @@ def upload_resume():
         
         # Auto-sync to vector database
         try:
-            from rag_service import RAGTalentService
+            from services.rag_service import RAGTalentService
             rag_service = RAGTalentService()
             sync_success = rag_service.auto_sync_resume(resume, 'create')
             if sync_success:
@@ -142,7 +142,7 @@ def upload_resume():
         
         # Broadcast real-time update to user
         try:
-            from realtime_service import broadcast_dashboard_update
+            from services.realtime_service import broadcast_dashboard_update
             broadcast_dashboard_update(
                 request.current_user_id, 
                 'resume_uploaded',
@@ -249,7 +249,7 @@ def delete_resume(resume_id):
         
         # Auto-sync deletion to vector database
         try:
-            from rag_service import RAGTalentService
+            from services.rag_service import RAGTalentService
             rag_service = RAGTalentService()
             sync_success = rag_service.auto_sync_resume(resume, 'delete')
             if sync_success:
@@ -277,7 +277,7 @@ def delete_resume(resume_id):
 def get_resume_insights(resume_id):
     """Generate comprehensive technical insights for a resume using Groq Llama models"""
     try:
-        from resume_insights_service import resume_insights_service
+        from services.resume_insights_service import resume_insights_service
         
         # Get analysis type from query parameter (enhanced, standard)
         analysis_type = request.args.get('type', 'standard')
@@ -340,7 +340,7 @@ def get_resume_insights(resume_id):
 def get_skill_recommendations(resume_id):
     """Get skill recommendations for a resume"""
     try:
-        from resume_insights_service import resume_insights_service
+        from services.resume_insights_service import resume_insights_service
         
         # Get the resume and verify ownership
         resume = Resume.query.get(resume_id)
@@ -391,7 +391,7 @@ def get_skill_recommendations(resume_id):
 def compare_resume_with_job(resume_id):
     """Compare resume against specific job requirements"""
     try:
-        from resume_insights_service import resume_insights_service
+        from services.resume_insights_service import resume_insights_service
         
         # Get the resume and verify ownership
         resume = Resume.query.get(resume_id)
@@ -484,7 +484,7 @@ def update_resume(resume_id):
         
         # Auto-sync update to vector database
         try:
-            from rag_service import RAGTalentService
+            from services.rag_service import RAGTalentService
             rag_service = RAGTalentService()
             sync_success = rag_service.auto_sync_resume(resume, 'update')
             if sync_success:
@@ -508,7 +508,7 @@ def update_resume(resume_id):
 def get_technical_assessment(resume_id):
     """Generate ultra-detailed technical assessment for a resume using enhanced AI analysis"""
     try:
-        from resume_insights_service import resume_insights_service
+        from services.resume_insights_service import resume_insights_service
         
         # Get the resume
         resume = Resume.query.get_or_404(resume_id)
